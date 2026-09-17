@@ -1,6 +1,13 @@
 from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, END
-from tools import TOOL
+from tools import TOOL, query_logs_tool, find_incident_tool
+from groq import Groq
+from dotenv import load_dotenv
+import os
+import json
+
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 
 class IncidentState(TypedDict):
     user_question: str
@@ -11,7 +18,10 @@ class IncidentState(TypedDict):
     analysis: str | None
 
 
-
+AVAILABLE_TOOLS = {
+    "query_logs_tool": query_logs_tool,
+    "find_incident_tool" : find_incident_tool
+}
 
 SYSTEM_PROMPT = """
 You are an AI Incident Copilot.
@@ -55,35 +65,85 @@ Rules:
 """
 
 
-def planner(State : IncidentState) -> Dict:
+def planner(State: IncidentState) -> Dict:
+    messages = [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": State["user_question"]
+        }
+    ]
+
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-20b",
+        messages=messages,
+        tools=TOOL,
+        tool_choice="auto"
+    )
+
+    assistant_message = response.choices[0].message
+
+    if assistant_message.tool_calls:
+        logs_results = []
+
+        for tool_call in assistant_message.tool_calls:
+            tool_name = tool_call.function.name
+            
+            # Safely parse JSON arguments
+            try:
+                arguments = json.loads(tool_call.function.arguments)
+            except json.JSONDecodeError:
+                arguments = {}
+
+            print(f"\nLLM requested tool: {tool_name}")
+            print("Arguments:", arguments)
+
+            if tool_name == "query_logs_tool":
+               State["logs"] = query_logs_tool(**arguments)
+
+
+            elif tool_name == "find_incident_tool":
+                State["incidents"] = find_incident_tool(**arguments)
+
+
+            else:
+                logs_results.append({"error": f"Unknown tool: {tool_name}"})
+
+    return State
+
+
+
+ANALYST_SYSTEM_PROMPT = """
+You are an AI Incident Copilot analyst.
+Summarize the incident/log data below for the engineer.
+Only use the data given. If there is no data, say so.
+Keep it short and clear.
+"""
+
+def llm_analyst(State: IncidentState) -> Dict:
+
+    logs = State.get("logs")
+    incidents = State.get("incident")
+
+
+    context = f"Incidents: {incidents}\nLogs: {logs}"
 
     messages = [
-    {
-        "role": "system",
-        "content": SYSTEM_PROMPT
-    },
-    {
-        "role": "user",
-        "content": State["user_question"]
-    }
-]
+        {"role": "system", "content": ANALYST_SYSTEM_PROMPT},
+        {"role": "user", "content": f"Question: {State['user_question']}\n{context}"}
+    ]
 
     response = client.chat.completions.create(
     model="openai/gpt-oss-20b",
     messages=messages,
-    tools=tools,
-    tool_choice="auto")
+)
 
-    assistant_message = response.choices[0].message
+    State["analysis"] = response.choices[0].message.content
 
-    
-
-    return None
-
-
-def llm_analyst(State: IncidentState) -> Dict:
-
-    return None
+    return State
 
 
 
