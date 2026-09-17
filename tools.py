@@ -1,4 +1,4 @@
-from db import query_logs
+from db import query_logs, get_incidents
 
 
 def query_logs_tool (
@@ -15,12 +15,16 @@ def query_logs_tool (
         end_time=end_time
     )
 
+def find_incident_tool (service_name, status, severity):
 
+    return get_incidents(service_name, status, severity)
 
-QUERY_LOGS_TOOL = {
+    
+
+TOOL = [{
     "type": "function",
     "function": {
-        "name": "query_logs",
+        "name": "query_logs_tool",
         "description": (
             "Query application logs from PostgreSQL. "
             "Use this when you need to investigate errors, "
@@ -56,3 +60,35 @@ QUERY_LOGS_TOOL = {
         }
     }
 }
+
+
+{
+    "type": "function",
+    "function": {
+        "name": "find_incident_tool",
+        "description": "Find incidents for a specific service, optionally filtered by incident status and severity.",
+        "parameter" : {
+            "type" : "object",
+            "properties":{
+                "service_name": {
+                    "type":"string",
+                    "description": "Name of the service for which incidents should be searched."
+                },
+
+                "status": {
+                    "tyepe": "string",
+                    "description": "Optional incident status to filter by, such as OPEN, RESOLVED, or CLOSED."
+                },
+                "severity":{
+                    "type": "string",
+                    "description": "Optional incident severity to filter by, such as LOW, MEDIUM, HIGH, or CRITICAL."
+                }
+
+            }
+
+        }
+        
+    }
+}
+
+]
