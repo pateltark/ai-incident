@@ -48,17 +48,12 @@ def get_service(service_name):
     with get_connection() as cur:
         cur.execute(
             """
-            SELECT
-                id,
-                name,
-                environment,
-                created_at
+            SELECT id, name, environment, created_at
             FROM public.services
-            WHERE name = %s;
+            WHERE name ILIKE %s;
             """,
-            (service_name,)
+            (f"%{service_name}%",)
         )
-
         return cur.fetchone()
 
 
@@ -93,11 +88,11 @@ def query_logs(
         params = []
 
         if service_name:
-            query += " AND s.name = %s"
-            params.append(service_name)
+            query += " AND s.name ILIKE %s"
+            params.append(f"%{service_name}%")
 
         if level:
-            query += " AND l.level = %s"
+            query += " AND UPPER(l.level) = UPPER(%s)"
             params.append(level)
 
         if start_time:
@@ -114,54 +109,34 @@ def query_logs(
 
         return cur.fetchall()
 
-
 # --------------------------------------------------
 # INCIDENTS
 # --------------------------------------------------
 
-def get_incidents(
-    service_name=None,
-    status=None,
-    severity=None
-):
+def get_incidents(service_name=None, status=None, severity=None):
     with get_connection() as cur:
-
         query = """
-            SELECT
-                i.id,
-                s.name AS service,
-                s.environment,
-                i.title,
-                i.description,
-                i.severity,
-                i.status,
-                i.started_at,
-                i.resolved_at,
-                i.created_at
+            SELECT i.id, s.name AS service, s.environment, i.title,
+                   i.description, i.severity, i.status,
+                   i.started_at, i.resolved_at, i.created_at
             FROM public.incidents AS i
-            JOIN public.services AS s
-                ON i.service_id = s.id
+            JOIN public.services AS s ON i.service_id = s.id
             WHERE 1 = 1
         """
-
         params = []
 
         if service_name:
-            query += " AND s.name = %s"
-            params.append(service_name)
-
+            query += " AND s.name ILIKE %s"
+            params.append(f"%{service_name}%")
         if status:
-            query += " AND i.status = %s"
+            query += " AND LOWER(i.status) = LOWER(%s)"
             params.append(status)
-
         if severity:
-            query += " AND i.severity = %s"
+            query += " AND LOWER(i.severity) = LOWER(%s)"
             params.append(severity)
 
         query += " ORDER BY i.started_at DESC"
-
         cur.execute(query, params)
-
         return cur.fetchall()
 
 

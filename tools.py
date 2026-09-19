@@ -15,7 +15,11 @@ def query_logs_tool (
         end_time=end_time
     )
 
-def find_incident_tool (service_name, status, severity):
+def find_incident_tool(
+    service_name: str | None = None,
+    status: str | None = None,
+    severity: str | None = None
+):
 
     return get_incidents(service_name, status, severity)
 
