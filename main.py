@@ -1,6 +1,6 @@
 from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, END
-from tools import TOOL, query_logs_tool, find_incident_tool
+from tools import TOOLS, query_logs_tool, find_incident_tool, query_slow_requests_tool
 from groq import Groq
 from dotenv import load_dotenv
 import os
@@ -20,109 +20,228 @@ class IncidentState(TypedDict):
     analysis: str | None
 
 
-SYSTEM_PROMPT = """
-You are an AI Incident Copilot.
 
-Your job is to help engineers investigate software incidents.
+tools = [
+    query_logs_tool,
+    find_incident_tool,
+    query_slow_requests_tool,
+]
 
-Rules:
-1. Understand the user's incident investigation question.
-2. When the user asks about an incident for a specific service,
-   use the available incident tool to retrieve the relevant incident data.
-3. Use the tool arguments appropriately:
-   - service_name: identify the service being investigated.
-   - status: use only when the user specifies or clearly asks for a status.
-   - severity: use only when the user specifies or clearly asks for a severity.
-4. Do not invent incident information.
-5. Base your answer only on:
-   - Information provided by the user.
-   - Information returned by the available tools.
-6. Clearly report relevant information such as:
-   - Service
-   - Incident title
-   - Description
-   - Severity
-   - Status
-   - Start time
-   - Resolution time, if available
-7. If no matching incident is found, clearly say that no matching incident
-   was found in the available data.
-8. Do not claim a root cause unless the available data supports it.
-9. Keep the response concise and useful for an engineer investigating
-   an incident.
+
+SUMMARIZER_SYSTEM_PROMPT = """
+You are the Summarizer / Report Agent of an AI Incident Copilot.
+
+Your job is to analyze all available investigation evidence and produce
+a structured incident report.
+
+You will receive:
+
+1. The original user question.
+2. The investigation plan created by the Planner.
+3. Current investigation results collected by the Analyst.
+4. Similar historical incidents retrieved by the Retriever.
+
+Your responsibilities:
+
+1. Analyze the current investigation results first.
+   The current database/tool results are the primary source of truth.
+
+2. Explain what is currently happening based on the evidence.
+
+3. Identify the most likely root cause when the evidence supports one.
+
+4. Use similar historical incidents as supporting context, not as proof.
+   A historical incident must never be treated as the current root cause
+   unless the current evidence supports the connection.
+
+5. Suggest a practical fix based on the available evidence.
+
+6. Assign a confidence level:
+   - HIGH: Current evidence directly supports the conclusion.
+   - MEDIUM: Evidence supports the conclusion, but some uncertainty remains.
+   - LOW: The conclusion is mainly based on historical similarity or weak evidence.
+
+7. Clearly distinguish:
+   - Observed facts
+   - Likely root cause
+   - Historical similarity
+   - Suggested fix
+   - Uncertainty
+
+8. Never invent:
+   - logs
+   - incidents
+   - timestamps
+   - errors
+   - metrics
+   - root causes
+   - fixes
+   - database results
+
+9. If the available evidence is insufficient to determine the root cause,
+   explicitly state that the root cause is uncertain.
+
+10. If no similar historical incidents were found, do not treat that as
+    evidence that the incident is unique.
+
+11. Do not mention internal implementation details such as LangGraph,
+    tools, agents, prompts, or state unless explicitly asked.
+
+Return the result using this structure:
+
+Incident Report
+
+What happened:
+<brief description of the observed problem>
+
+Evidence:
+- <important evidence from current investigation>
+
+Likely root cause:
+<most likely explanation supported by the evidence>
+or
+<Unable to determine from available evidence>
+
+Suggested fix:
+<practical action supported by the evidence>
+or
+<No specific fix can be confidently recommended>
+
+Historical similarity:
+<relevant similar incidents and what they suggest>
+or
+<No relevant historical incidents found>
+
+Confidence:
+<HIGH / MEDIUM / LOW>
+
+Reasoning:
+<brief explanation of why the root cause and confidence level
+were selected>
+
+Remember:
+Current investigation evidence has higher priority than historical
+incident similarity.
 """
 
-
-def planner(state: IncidentState) -> Dict[str, Any]:
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": state["user_question"]}
-    ]
-
-    response = client.chat.completions.create(
-        model="openai/gpt-oss-20b",
-        messages=messages,
-        tools=TOOL,
-        tool_choice="auto"
-    )
-
-    assistant_message = response.choices[0].message
-
-    logs_results = []
-    incidents_results = []
-
-    if assistant_message.tool_calls:
-        for tool_call in assistant_message.tool_calls:
-            tool_name = tool_call.function.name
-            
-            try:
-                arguments = json.loads(tool_call.function.arguments)
-            except json.JSONDecodeError:
-                arguments = {}
-
-            print(f"\nLLM requested tool: {tool_name}")
-            print("Arguments:", arguments)
-
-            if tool_name == "query_logs_tool":
-                res = query_logs_tool(**arguments)
-                print("Tool output (logs):", res)
-                if isinstance(res, list):
-                    logs_results.extend(res)
-                elif res:
-                    logs_results.append(res)
-
-            elif tool_name == "find_incident_tool":
-                res = find_incident_tool(**arguments)
-                print("Tool output (incidents):", res)
-                if isinstance(res, list):
-                    incidents_results.extend(res)
-                elif res:
-                    incidents_results.append(res)
-
-    # Return state updates for LangGraph to merge automatically
-    return {
-        "logs": logs_results,
-        "incidents": incidents_results
-    }
 
 
 ANALYST_SYSTEM_PROMPT = """
-You are an AI Incident Copilot analyst.
-Summarize the incident/log data below for the engineer.
-Only use the data given. If there is no data, say so.
-Keep it short and clear.
+You are the Analyst agent of an AI Incident Copilot.
+
+Your job is to investigate the user's incident question by using the
+available read-only investigation tools and return the evidence collected
+from those tools.
+
+Your responsibilities:
+
+1. Understand the user's investigation request or investigation plan.
+
+2. Determine which available tool is relevant to the request.
+
+3. Use the appropriate tools to retrieve the required data.
+
+Available tools include:
+- query_logs_tool
+- find_incident_tool
+- query_slow_requests_tool
+
+4. Choose tool arguments based only on information available in the
+   user's request or investigation plan.
+
+5. If multiple types of information are required, call all relevant
+   tools.
+
+6. Do not invent tool arguments, database results, logs, incidents,
+   timestamps, services, errors, or latency values.
+
+7. If a tool returns an error, inspect the error and retry the
+   investigation once with corrected arguments when possible.
+
+8. Do not retry the same failed tool call more than once.
+
+9. If a tool returns no matching records, preserve that result and
+   report that no matching data was found.
+
+10. Only perform read-only investigation. Never modify, delete, or
+    insert database data.
+
+11. Do not diagnose the root cause. Your job is to collect evidence,
+    not make the final incident diagnosis.
+
+12. Continue investigating until all relevant parts of the request
+    have been investigated.
+
+13. Return the collected tool results in a structured form that can
+    be passed to another LLM for final analysis.
+
+The database/tool results are the source of truth.
 """
 
 
-def llm_analyst(state: IncidentState) -> Dict[str, Any]:
+def analyst_llm(state: IncidentState) -> Dict[str, Any]:
+
+    messages = [
+        {
+            "role": "system",
+            "content": ANALYST_SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": state["user_question"]
+        }
+    ]
+
+    response = client.chat.completions.create(
+    model="openai/gpt-oss-20b",
+    messages=messages,
+    tools=TOOLS,
+    tool_choice="auto",
+)
+    msg = response.choices[0].message
+
+    logs, incidents, slow = [], [], []
+
+    for call in msg.tool_calls or []:
+        name = call.function.name
+        try:
+            args = json.loads(call.function.arguments)
+        except json.JSONDecodeError:
+            args = {}
+
+        try:
+            if name == "query_logs_tool":
+                logs.append(query_logs_tool(**args))
+            elif name == "find_incident_tool":
+                incidents.append(find_incident_tool(**args))
+            elif name == "query_slow_requests_tool":
+                slow.append(query_slow_requests_tool(**args))
+        except Exception as e:
+            err = {"error": str(e), "tool": name, "args": args}
+            # store the error so the summarizer can see it
+            (logs if name == "query_logs_tool"
+            else incidents if name == "find_incident_tool"
+            else slow).append(err)
+
+    return {"logs": logs, "incidents": incidents, "slow_requests": slow}
+
+
+
+
+
+
+
+
+def summerize_llm (state: IncidentState) -> Dict[str, Any]:
     # Correct key name access ('incidents' instead of 'incident')
     logs = state.get("logs", [])
     incidents = state.get("incidents", [])
+    latency = state.get("high_latency", [])
 
-    context = f"Incidents: {incidents}\nLogs: {logs}"
+    context = f"Incidents: {incidents}\nLogs: {logs}\nLatency {latency}"
 
     messages = [
-        {"role": "system", "content": ANALYST_SYSTEM_PROMPT},
+        {"role": "system", "content": SUMMARIZER_SYSTEM_PROMPT},
         {"role": "user", "content": f"Question: {state['user_question']}\n{context}"}
     ]
 
@@ -140,8 +259,8 @@ def llm_analyst(state: IncidentState) -> Dict[str, Any]:
 # Graph Definition
 graph = StateGraph(IncidentState)
 
-graph.add_node("planner_node", planner)
-graph.add_node("llm_analyst_node", llm_analyst)
+graph.add_node("planner_node", analyst_llm)
+graph.add_node("llm_analyst_node", summerize_llm)
 
 graph.set_entry_point("planner_node")
 graph.add_edge("planner_node", "llm_analyst_node")
@@ -150,7 +269,7 @@ graph.add_edge("llm_analyst_node", END)
 app = graph.compile()
 
 
-# Execution Entry Point
+
 initial_state: IncidentState = {
     "user_question": "What is the error in payment service ?",
     "service_name": None,  # Corrected from [] to None
