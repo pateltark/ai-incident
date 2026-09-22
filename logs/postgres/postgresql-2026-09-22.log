@@ -1,0 +1,931 @@
+2026-09-22 02:29:32 UTC:10.0.4.109(50568):svc_auth@auth_db:[25680]:LOG:  duration: 42.860 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:29:32 UTC:10.0.0.230(45326):svc_payment@payment_db:[13405]:LOG:  duration: 53.927 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:33 UTC:10.0.2.124(30907):svc_checkout@checkout_db:[31323]:LOG:  duration: 53.191 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:33 UTC:10.0.3.207(55925):svc_inventory@inventory_db:[12852]:LOG:  duration: 57.477 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:29:34 UTC:10.0.3.126(64152):svc_payment@payment_db:[25713]:LOG:  duration: 69.584 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:35 UTC:10.0.0.226(32795):svc_inventory@inventory_db:[22107]:LOG:  duration: 50.465 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:29:36 UTC:10.0.1.242(47034):svc_auth@auth_db:[23629]:LOG:  duration: 61.092 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:29:36 UTC:10.0.0.88(41807):svc_checkout@checkout_db:[31323]:LOG:  duration: 44.110 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:37 UTC:10.0.1.145(49701):svc_checkout@checkout_db:[20340]:LOG:  duration: 86.034 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:38 UTC:10.0.4.123(58239):svc_checkout@checkout_db:[10249]:LOG:  duration: 60.833 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:38 UTC:10.0.3.52(32838):svc_payment@payment_db:[23380]:LOG:  duration: 42.524 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:40 UTC:10.0.1.111(52746):svc_payment@payment_db:[15832]:LOG:  duration: 44.443 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:40 UTC:10.0.1.180(48208):svc_inventory@inventory_db:[12904]:LOG:  duration: 45.633 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:29:41 UTC:10.0.2.196(50396):svc_checkout@checkout_db:[15280]:LOG:  duration: 62.533 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:43 UTC:10.0.5.68(47223):svc_checkout@checkout_db:[25224]:LOG:  duration: 128.959 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:44 UTC:10.0.2.177(39543):svc_checkout@checkout_db:[30767]:LOG:  duration: 68.751 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:45 UTC:10.0.1.135(61964):svc_checkout@checkout_db:[17232]:LOG:  duration: 44.886 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:45 UTC:10.0.4.118(34596):svc_payment@payment_db:[12717]:LOG:  duration: 70.586 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:46 UTC:10.0.0.197(57366):svc_payment@payment_db:[12218]:LOG:  duration: 60.831 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:46 UTC:10.0.4.214(50794):svc_checkout@checkout_db:[21788]:LOG:  duration: 77.733 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:46 UTC:10.0.3.142(57251):svc_checkout@checkout_db:[20358]:LOG:  duration: 74.070 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:47 UTC:10.0.3.13(63106):svc_checkout@checkout_db:[21997]:LOG:  duration: 81.080 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:47 UTC:10.0.3.246(56633):svc_inventory@inventory_db:[22062]:LOG:  duration: 40.433 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:29:48 UTC:10.0.4.247(61933):svc_checkout@checkout_db:[31139]:LOG:  duration: 44.325 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:48 UTC:10.0.4.224(37949):svc_inventory@inventory_db:[13318]:LOG:  duration: 41.239 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:29:49 UTC:10.0.0.52(48096):svc_payment@payment_db:[24193]:ERROR:  duplicate key value violates unique constraint "payments_pkey"
+2026-09-22 02:29:49 UTC:10.0.0.52(52100):svc_payment@payment_db:[24193]:STATEMENT:  INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:49 UTC:10.0.5.223(59521):svc_inventory@inventory_db:[27742]:LOG:  duration: 47.366 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:29:49 UTC:10.0.0.21(50406):svc_auth@auth_db:[18968]:LOG:  duration: 44.951 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:29:49 UTC:10.0.3.119(40963):svc_inventory@inventory_db:[24577]:LOG:  duration: 74.102 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:29:50 UTC:10.0.3.163(58642):svc_payment@payment_db:[13222]:LOG:  duration: 60.721 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:50 UTC:10.0.0.150(46092):svc_checkout@checkout_db:[11968]:LOG:  duration: 87.044 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:51 UTC:10.0.5.226(55747):svc_checkout@checkout_db:[12303]:LOG:  duration: 142.157 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:51 UTC:10.0.4.111(40030):svc_payment@payment_db:[20244]:LOG:  duration: 55.565 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:52 UTC:10.0.0.20(58859):svc_payment@payment_db:[29214]:LOG:  duration: 99.244 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:29:52 UTC:10.0.3.122(53099):svc_payment@payment_db:[17995]:LOG:  duration: 159.438 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:53 UTC:10.0.2.223(35551):svc_payment@payment_db:[12650]:LOG:  duration: 109.750 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:54 UTC:10.0.5.241(47204):svc_inventory@inventory_db:[21104]:LOG:  duration: 47.498 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:29:54 UTC:10.0.3.190(30644):svc_checkout@checkout_db:[12751]:LOG:  duration: 42.213 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:54 UTC:10.0.4.236(35066):svc_checkout@checkout_db:[20044]:LOG:  duration: 45.523 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:54 UTC:10.0.4.211(40426):svc_checkout@checkout_db:[24661]:LOG:  duration: 103.843 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:55 UTC:10.0.3.77(37924):svc_checkout@checkout_db:[24307]:LOG:  duration: 416.856 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:55 UTC:10.0.0.219(32023):svc_inventory@inventory_db:[27844]:LOG:  duration: 49.605 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:29:56 UTC:10.0.5.177(63556):svc_payment@payment_db:[29064]:LOG:  duration: 69.616 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:57 UTC:10.0.3.10(54545):svc_payment@payment_db:[30233]:LOG:  duration: 105.559 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:58 UTC:10.0.4.83(34718):svc_payment@payment_db:[10358]:LOG:  duration: 61.484 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:29:58 UTC:10.0.0.156(37287):svc_payment@payment_db:[22752]:LOG:  duration: 67.061 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:29:58 UTC:10.0.4.86(51674):svc_auth@auth_db:[26927]:LOG:  duration: 43.039 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:29:59 UTC:10.0.4.3(52712):svc_inventory@inventory_db:[25430]:LOG:  duration: 82.419 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:30:00 UTC:10.0.0.89(61354):svc_checkout@checkout_db:[24279]:LOG:  duration: 67.412 ms  statement: UPDATE cart_items SET quantity = quantity + $1 WHERE cart_id = $2 AND sku = $3
+2026-09-22 02:30:00 UTC:10.0.1.97(39628):svc_auth@auth_db:[15281]:LOG:  duration: 40.152 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:30:01 UTC:10.0.3.218(30823):svc_checkout@checkout_db:[30323]:LOG:  duration: 83.426 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:01 UTC:10.0.3.131(46234):svc_checkout@checkout_db:[26625]:LOG:  duration: 62.955 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:01 UTC:10.0.2.60(39581):svc_auth@auth_db:[22760]:LOG:  duration: 43.103 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:30:02 UTC:10.0.3.137(64755):svc_inventory@inventory_db:[30590]:LOG:  duration: 51.519 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:03 UTC:10.0.4.54(33467):svc_payment@payment_db:[30683]:LOG:  duration: 43.490 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:04 UTC:10.0.0.220(39590):svc_payment@payment_db:[29881]:LOG:  duration: 56.270 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:05 UTC:10.0.3.251(42632):svc_checkout@checkout_db:[19292]:LOG:  duration: 52.177 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:05 UTC:10.0.5.178(52170):svc_payment@payment_db:[30443]:LOG:  duration: 41.884 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:06 UTC:10.0.5.26(46627):svc_payment@payment_db:[15691]:LOG:  duration: 54.581 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:06 UTC:10.0.5.185(30029):svc_auth@auth_db:[16285]:LOG:  duration: 44.444 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:30:07 UTC:10.0.0.122(41085):svc_checkout@checkout_db:[17539]:LOG:  duration: 73.227 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:07 UTC:10.0.5.102(51613):svc_checkout@checkout_db:[14647]:LOG:  duration: 72.919 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:07 UTC:10.0.5.128(41596):svc_payment@payment_db:[31461]:LOG:  duration: 114.050 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:08 UTC:10.0.4.80(52659):svc_inventory@inventory_db:[11035]:LOG:  duration: 47.330 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:09 UTC:10.0.4.10(58047):svc_checkout@checkout_db:[30623]:LOG:  duration: 56.455 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:09 UTC:10.0.1.115(51300):svc_checkout@checkout_db:[17789]:LOG:  duration: 54.753 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:10 UTC:10.0.2.170(54308):svc_payment@payment_db:[30860]:LOG:  duration: 49.972 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:11 UTC:10.0.3.175(51758):svc_checkout@checkout_db:[19511]:LOG:  duration: 45.079 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:12 UTC:10.0.1.162(45040):svc_inventory@inventory_db:[18219]:LOG:  duration: 49.965 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:12 UTC:10.0.3.178(53265):svc_checkout@checkout_db:[25194]:LOG:  duration: 85.041 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:12 UTC:10.0.1.132(61884):svc_payment@payment_db:[29718]:LOG:  duration: 55.110 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:13 UTC:10.0.2.220(44386):svc_payment@payment_db:[31776]:LOG:  duration: 104.547 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:30:13 UTC:10.0.3.80(36393):svc_checkout@checkout_db:[19380]:LOG:  duration: 50.262 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:14 UTC:10.0.5.190(59819):svc_payment@payment_db:[31295]:LOG:  duration: 45.934 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:15 UTC:10.0.0.237(38800):svc_payment@payment_db:[13459]:LOG:  duration: 67.240 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:15 UTC:10.0.0.197(46015):svc_payment@payment_db:[13396]:LOG:  duration: 53.035 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:16 UTC:10.0.3.42(57265):svc_checkout@checkout_db:[21373]:LOG:  duration: 65.805 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:16 UTC:10.0.5.210(35774):svc_checkout@checkout_db:[27315]:LOG:  duration: 298.463 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:17 UTC:10.0.3.234(48591):svc_inventory@inventory_db:[24773]:LOG:  duration: 42.591 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:30:18 UTC:10.0.0.87(37350):svc_inventory@inventory_db:[12948]:LOG:  duration: 41.511 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:30:18 UTC:10.0.1.155(45365):svc_payment@payment_db:[29982]:LOG:  duration: 77.353 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:18 UTC:10.0.2.20(61314):svc_checkout@checkout_db:[25772]:LOG:  duration: 94.115 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:18 UTC:10.0.4.246(37936):svc_inventory@inventory_db:[29253]:LOG:  duration: 48.526 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:30:19 UTC:10.0.0.50(51366):svc_auth@auth_db:[14892]:LOG:  duration: 40.451 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:30:19 UTC:10.0.3.162(38288):svc_payment@payment_db:[28139]:LOG:  duration: 71.231 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:20 UTC:10.0.4.12(43661):svc_checkout@checkout_db:[24175]:LOG:  duration: 122.399 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:20 UTC:10.0.5.111(64640):svc_payment@payment_db:[17286]:LOG:  duration: 467.663 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:20 UTC:10.0.0.254(47770):svc_inventory@inventory_db:[31998]:LOG:  duration: 47.143 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:21 UTC:10.0.2.52(63696):svc_checkout@checkout_db:[30725]:LOG:  duration: 41.551 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:21 UTC:10.0.4.235(39411):svc_payment@payment_db:[28858]:LOG:  duration: 85.234 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:22 UTC:10.0.3.47(58694):svc_checkout@checkout_db:[23750]:LOG:  duration: 62.598 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:22 UTC:10.0.1.90(41526):svc_payment@payment_db:[22844]:LOG:  duration: 45.580 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:30:24 UTC:10.0.2.75(36566):svc_auth@auth_db:[27112]:LOG:  duration: 54.145 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:30:25 UTC:10.0.1.179(43394):svc_checkout@checkout_db:[22016]:LOG:  duration: 75.328 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:25 UTC:10.0.3.65(49245):svc_inventory@inventory_db:[15263]:LOG:  duration: 54.643 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:27 UTC:10.0.5.252(44482):svc_checkout@checkout_db:[14253]:LOG:  duration: 63.901 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:27 UTC:10.0.3.34(43932):svc_checkout@checkout_db:[20167]:LOG:  duration: 81.406 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:28 UTC:10.0.5.214(37716):svc_inventory@inventory_db:[30983]:LOG:  duration: 88.602 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:29 UTC:10.0.4.72(41791):svc_checkout@checkout_db:[26584]:LOG:  duration: 87.301 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:29 UTC:10.0.3.152(40061):svc_checkout@checkout_db:[14431]:LOG:  duration: 51.247 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:31 UTC:10.0.0.116(59856):svc_payment@payment_db:[17510]:LOG:  duration: 58.308 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:31 UTC:10.0.1.84(36207):svc_inventory@inventory_db:[13561]:LOG:  duration: 60.720 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:30:31 UTC:10.0.4.191(38945):svc_inventory@inventory_db:[20111]:LOG:  duration: 40.324 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:32 UTC:10.0.4.52(64263):svc_inventory@inventory_db:[18220]:LOG:  duration: 55.144 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:33 UTC:10.0.4.237(46826):svc_payment@payment_db:[17039]:LOG:  duration: 114.106 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:33 UTC:10.0.1.67(31135):svc_payment@payment_db:[28546]:LOG:  duration: 53.369 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:33 UTC:10.0.2.223(45695):svc_inventory@inventory_db:[13323]:LOG:  duration: 66.851 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:34 UTC:10.0.0.92(59059):svc_payment@payment_db:[26327]:LOG:  duration: 141.206 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:35 UTC:10.0.3.135(32499):svc_inventory@inventory_db:[11487]:LOG:  duration: 50.389 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:35 UTC:10.0.0.181(43181):svc_checkout@checkout_db:[31492]:LOG:  duration: 69.091 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:36 UTC:10.0.5.26(54450):svc_checkout@checkout_db:[20947]:LOG:  duration: 208.673 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:36 UTC:10.0.4.248(36957):svc_checkout@checkout_db:[11234]:LOG:  duration: 41.811 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:37 UTC:10.0.2.218(54191):svc_checkout@checkout_db:[13489]:LOG:  duration: 46.919 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:37 UTC:10.0.0.114(54567):svc_checkout@checkout_db:[22038]:LOG:  duration: 87.245 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:38 UTC:10.0.2.22(58022):svc_checkout@checkout_db:[11401]:LOG:  duration: 81.168 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:38 UTC:10.0.5.249(42132):svc_payment@payment_db:[10911]:LOG:  duration: 51.334 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:30:40 UTC:10.0.2.132(54366):svc_checkout@checkout_db:[13928]:LOG:  duration: 59.043 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:40 UTC:10.0.5.136(51513):svc_inventory@inventory_db:[11453]:LOG:  duration: 52.105 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:40 UTC:10.0.2.52(55725):svc_payment@payment_db:[16916]:LOG:  duration: 56.966 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:41 UTC:10.0.0.76(37530):svc_checkout@checkout_db:[15699]:LOG:  duration: 69.525 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:42 UTC:10.0.1.212(62266):svc_inventory@inventory_db:[19184]:LOG:  duration: 77.844 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:42 UTC:10.0.4.87(40904):svc_payment@payment_db:[13580]:LOG:  duration: 43.153 ms  statement: SELECT status FROM payments WHERE order_id = $1
+2026-09-22 02:30:42 UTC:10.0.2.20(56128):svc_checkout@checkout_db:[21020]:LOG:  duration: 40.534 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:43 UTC:10.0.4.49(34114):svc_checkout@checkout_db:[30201]:LOG:  duration: 76.027 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:43 UTC:10.0.0.253(52871):svc_checkout@checkout_db:[13986]:LOG:  duration: 66.016 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:44 UTC:10.0.5.208(44537):svc_checkout@checkout_db:[19863]:LOG:  duration: 104.736 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:44 UTC:10.0.4.227(33648):svc_payment@payment_db:[20996]:LOG:  duration: 63.868 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:30:44 UTC:10.0.1.171(30795):svc_payment@payment_db:[30814]:LOG:  duration: 45.213 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:45 UTC:10.0.2.60(54222):svc_checkout@checkout_db:[18341]:LOG:  duration: 53.396 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:45 UTC:10.0.2.17(45632):svc_inventory@inventory_db:[25414]:LOG:  duration: 117.323 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:46 UTC:10.0.4.255(60324):svc_checkout@checkout_db:[12593]:LOG:  duration: 76.954 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:46 UTC:10.0.3.124(43792):svc_checkout@checkout_db:[27703]:LOG:  duration: 193.719 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:46 UTC:10.0.5.32(32473):svc_checkout@checkout_db:[13873]:LOG:  duration: 57.287 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:46 UTC:10.0.2.110(33184):svc_payment@payment_db:[14980]:LOG:  duration: 62.839 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:47 UTC:10.0.3.220(58464):svc_auth@auth_db:[20221]:LOG:  duration: 43.520 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:30:47 UTC:10.0.5.221(57814):svc_checkout@checkout_db:[27186]:LOG:  duration: 88.596 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:47 UTC:10.0.5.251(36560):svc_inventory@inventory_db:[10895]:LOG:  duration: 42.176 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:30:48 UTC:10.0.0.244(55160):svc_payment@payment_db:[18168]:LOG:  duration: 54.785 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:48 UTC:10.0.0.106(33690):svc_inventory@inventory_db:[12841]:LOG:  duration: 68.530 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:49 UTC:10.0.2.188(48122):svc_payment@payment_db:[20408]:LOG:  duration: 40.709 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:30:49 UTC:10.0.0.208(53111):svc_checkout@checkout_db:[13713]:LOG:  duration: 75.972 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:49 UTC:10.0.5.2(61946):svc_checkout@checkout_db:[16546]:LOG:  duration: 50.841 ms  statement: UPDATE cart_items SET quantity = quantity + $1 WHERE cart_id = $2 AND sku = $3
+2026-09-22 02:30:49 UTC:10.0.1.65(62221):svc_checkout@checkout_db:[24036]:LOG:  duration: 54.737 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:50 UTC:10.0.2.158(33833):svc_checkout@checkout_db:[15211]:LOG:  duration: 115.313 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:50 UTC:10.0.0.18(50794):svc_inventory@inventory_db:[22890]:LOG:  duration: 41.790 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:51 UTC:10.0.2.95(48988):svc_checkout@checkout_db:[25016]:LOG:  duration: 83.641 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:52 UTC:10.0.2.27(57087):svc_payment@payment_db:[20761]:LOG:  duration: 113.748 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:52 UTC:10.0.4.123(62176):svc_checkout@checkout_db:[30884]:LOG:  duration: 80.018 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:52 UTC:10.0.3.249(59714):svc_checkout@checkout_db:[30210]:LOG:  duration: 81.733 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:52 UTC:10.0.5.178(34857):svc_inventory@inventory_db:[22607]:LOG:  duration: 57.827 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:30:54 UTC:10.0.1.79(57572):svc_inventory@inventory_db:[10369]:LOG:  duration: 47.493 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:55 UTC:10.0.5.58(51362):svc_inventory@inventory_db:[10605]:LOG:  duration: 58.177 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:56 UTC:10.0.3.208(52190):svc_checkout@checkout_db:[18201]:LOG:  duration: 139.528 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:57 UTC:10.0.0.143(54979):svc_checkout@checkout_db:[28416]:LOG:  duration: 130.624 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:57 UTC:10.0.4.104(39944):svc_payment@payment_db:[29523]:LOG:  duration: 61.282 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:57 UTC:10.0.2.253(56483):svc_inventory@inventory_db:[28678]:LOG:  duration: 46.183 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:58 UTC:10.0.2.112(58157):svc_inventory@inventory_db:[24753]:LOG:  duration: 56.050 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:30:58 UTC:10.0.4.86(35676):svc_inventory@inventory_db:[12607]:LOG:  duration: 43.983 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:30:58 UTC:10.0.4.37(64844):svc_inventory@inventory_db:[19741]:LOG:  duration: 60.302 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:30:58 UTC:10.0.2.241(46563):svc_payment@payment_db:[21694]:LOG:  duration: 148.776 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:59 UTC:10.0.2.234(37742):svc_checkout@checkout_db:[15316]:LOG:  duration: 98.981 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:30:59 UTC:10.0.0.123(33466):svc_payment@payment_db:[28937]:LOG:  duration: 41.351 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:00 UTC:10.0.1.225(51359):svc_checkout@checkout_db:[27055]:LOG:  duration: 86.863 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:02 UTC:10.0.4.129(46473):svc_payment@payment_db:[24777]:LOG:  duration: 85.522 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:02 UTC:10.0.1.190(53191):svc_payment@payment_db:[19251]:LOG:  duration: 63.761 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:03 UTC:10.0.5.143(52919):svc_checkout@checkout_db:[28919]:LOG:  duration: 85.299 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:03 UTC:10.0.3.176(39634):svc_payment@payment_db:[29064]:LOG:  duration: 40.423 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:31:03 UTC:10.0.1.18(41236):svc_checkout@checkout_db:[13304]:LOG:  duration: 67.875 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:04 UTC:10.0.4.207(32001):svc_checkout@checkout_db:[30661]:LOG:  duration: 50.098 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:05 UTC:10.0.5.231(57550):svc_inventory@inventory_db:[25043]:LOG:  duration: 51.461 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:05 UTC:10.0.3.206(55846):svc_checkout@checkout_db:[17114]:LOG:  duration: 102.387 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:07 UTC:10.0.2.42(30663):svc_checkout@checkout_db:[27998]:LOG:  duration: 49.929 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:08 UTC:10.0.0.141(44878):svc_checkout@checkout_db:[26119]:LOG:  duration: 80.609 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:08 UTC:10.0.4.181(46660):svc_checkout@checkout_db:[16280]:LOG:  duration: 81.599 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:09 UTC:10.0.5.183(59739):svc_payment@payment_db:[29788]:LOG:  duration: 46.596 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:10 UTC:10.0.2.252(48668):svc_payment@payment_db:[21303]:LOG:  duration: 89.977 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:10 UTC:10.0.5.109(52741):svc_payment@payment_db:[17212]:LOG:  duration: 57.244 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:31:10 UTC:10.0.1.127(48177):svc_inventory@inventory_db:[20174]:LOG:  duration: 47.832 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:11 UTC:10.0.3.60(33014):svc_inventory@inventory_db:[26680]:LOG:  duration: 67.122 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:11 UTC:10.0.2.89(58940):svc_payment@payment_db:[16968]:LOG:  duration: 40.206 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:12 UTC:10.0.5.125(52051):svc_checkout@checkout_db:[30749]:LOG:  duration: 70.685 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:12 UTC:10.0.2.75(54246):svc_payment@payment_db:[19790]:LOG:  duration: 349.396 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:13 UTC:10.0.5.190(49102):svc_payment@payment_db:[11884]:LOG:  duration: 81.427 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:14 UTC:10.0.3.43(52488):svc_checkout@checkout_db:[30149]:LOG:  duration: 68.750 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:14 UTC:10.0.5.227(44783):svc_inventory@inventory_db:[19845]:LOG:  duration: 78.192 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:15 UTC:10.0.2.146(55612):svc_payment@payment_db:[15487]:LOG:  duration: 69.313 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:15 UTC:10.0.2.175(49250):svc_checkout@checkout_db:[13420]:LOG:  duration: 53.204 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:16 UTC:10.0.3.87(61131):svc_payment@payment_db:[25280]:LOG:  duration: 65.221 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:17 UTC:10.0.3.25(47335):svc_inventory@inventory_db:[20976]:LOG:  duration: 84.828 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:18 UTC:10.0.4.86(62647):svc_payment@payment_db:[12024]:LOG:  duration: 49.397 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:18 UTC:10.0.4.61(33522):svc_checkout@checkout_db:[22566]:LOG:  duration: 58.286 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:19 UTC:10.0.3.81(44540):svc_inventory@inventory_db:[23728]:LOG:  duration: 50.051 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:19 UTC:10.0.2.135(62726):svc_inventory@inventory_db:[14797]:LOG:  duration: 44.522 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:19 UTC:10.0.2.106(35096):svc_payment@payment_db:[13417]:LOG:  duration: 92.223 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:20 UTC:10.0.0.118(58782):svc_inventory@inventory_db:[26065]:LOG:  duration: 74.194 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:20 UTC:10.0.0.225(63165):svc_payment@payment_db:[22142]:LOG:  duration: 56.405 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:21 UTC:10.0.0.99(55358):svc_inventory@inventory_db:[23279]:LOG:  duration: 50.511 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:21 UTC:10.0.0.1(36895):svc_payment@payment_db:[24331]:LOG:  duration: 45.504 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:22 UTC:10.0.2.142(44060):svc_checkout@checkout_db:[12061]:LOG:  duration: 55.645 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:22 UTC:10.0.5.68(46783):svc_inventory@inventory_db:[12139]:LOG:  duration: 104.885 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:22 UTC:10.0.1.173(41300):svc_inventory@inventory_db:[27301]:LOG:  duration: 53.183 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:23 UTC:10.0.5.39(31942):svc_checkout@checkout_db:[15200]:LOG:  duration: 40.318 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:23 UTC:10.0.5.5(50277):svc_payment@payment_db:[28331]:LOG:  duration: 166.364 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:23 UTC:10.0.5.98(39750):svc_payment@payment_db:[31148]:LOG:  duration: 60.297 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:25 UTC:10.0.4.79(57357):svc_inventory@inventory_db:[16611]:LOG:  duration: 73.320 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:25 UTC:10.0.5.106(39419):svc_inventory@inventory_db:[28697]:LOG:  duration: 48.009 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:25 UTC:10.0.2.9(32361):svc_payment@payment_db:[19666]:LOG:  duration: 59.090 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:25 UTC:10.0.1.110(53816):svc_checkout@checkout_db:[26876]:LOG:  duration: 54.716 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:25 UTC:10.0.2.12(35586):svc_inventory@inventory_db:[30303]:LOG:  duration: 69.427 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:26 UTC:10.0.4.94(53089):svc_payment@payment_db:[18841]:LOG:  duration: 59.947 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:26 UTC:10.0.4.252(61392):svc_payment@payment_db:[22285]:LOG:  duration: 41.149 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:28 UTC:10.0.0.41(32752):svc_checkout@checkout_db:[20560]:LOG:  duration: 90.124 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:28 UTC:10.0.2.184(34482):svc_checkout@checkout_db:[29881]:LOG:  duration: 63.810 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:29 UTC:10.0.5.207(62303):svc_payment@payment_db:[10822]:LOG:  duration: 58.399 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:29 UTC:10.0.0.234(57165):svc_inventory@inventory_db:[26707]:LOG:  duration: 40.601 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:29 UTC:10.0.1.85(46193):svc_payment@payment_db:[26878]:LOG:  duration: 42.040 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:30 UTC:10.0.3.21(62764):svc_payment@payment_db:[13196]:LOG:  duration: 40.416 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:30 UTC:10.0.1.2(32160):svc_inventory@inventory_db:[20623]:LOG:  duration: 58.355 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:31 UTC:10.0.0.223(30444):svc_checkout@checkout_db:[27203]:LOG:  duration: 62.147 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:31 UTC:10.0.5.211(30941):svc_payment@payment_db:[31794]:LOG:  duration: 103.153 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:31:31 UTC:10.0.1.33(40533):svc_checkout@checkout_db:[29520]:LOG:  duration: 87.626 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:32 UTC:10.0.1.255(32426):svc_checkout@checkout_db:[16792]:LOG:  duration: 58.031 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:32 UTC:10.0.4.78(40305):svc_checkout@checkout_db:[25914]:LOG:  duration: 97.081 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:32 UTC:10.0.1.233(49086):svc_inventory@inventory_db:[25711]:LOG:  duration: 45.362 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:33 UTC:10.0.0.236(47555):svc_payment@payment_db:[13762]:LOG:  duration: 79.497 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:33 UTC:10.0.0.214(59911):svc_inventory@inventory_db:[22326]:LOG:  duration: 44.195 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:34 UTC:10.0.1.15(44618):svc_payment@payment_db:[15144]:LOG:  duration: 70.441 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:34 UTC:10.0.1.199(63590):svc_payment@payment_db:[24434]:LOG:  duration: 83.769 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:34 UTC:10.0.3.41(36722):svc_checkout@checkout_db:[19917]:LOG:  duration: 60.071 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:35 UTC:10.0.5.16(63702):svc_checkout@checkout_db:[10371]:LOG:  duration: 121.041 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:36 UTC:10.0.4.94(61278):svc_checkout@checkout_db:[29803]:LOG:  duration: 226.395 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:38 UTC:10.0.1.209(42986):svc_inventory@inventory_db:[29360]:LOG:  duration: 41.693 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:38 UTC:10.0.4.34(51003):svc_checkout@checkout_db:[14553]:LOG:  duration: 44.007 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:39 UTC:10.0.0.85(54995):svc_checkout@checkout_db:[30239]:LOG:  duration: 56.451 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:39 UTC:10.0.4.86(59901):svc_payment@payment_db:[12224]:LOG:  duration: 66.491 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:40 UTC:10.0.4.2(60961):svc_checkout@checkout_db:[19927]:LOG:  duration: 64.968 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:40 UTC:10.0.2.243(35115):svc_inventory@inventory_db:[28580]:LOG:  duration: 46.445 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:40 UTC:10.0.2.181(50518):svc_payment@payment_db:[22607]:LOG:  duration: 134.276 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:41 UTC:10.0.3.196(46578):svc_checkout@checkout_db:[20036]:LOG:  duration: 51.358 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:42 UTC:10.0.2.135(49195):svc_checkout@checkout_db:[22240]:LOG:  duration: 126.771 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:42 UTC:10.0.1.157(33447):svc_inventory@inventory_db:[17332]:LOG:  duration: 42.712 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:42 UTC:10.0.2.68(32785):svc_checkout@checkout_db:[31008]:LOG:  duration: 46.281 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:42 UTC:10.0.1.216(50307):svc_checkout@checkout_db:[22929]:LOG:  duration: 79.949 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:43 UTC:10.0.0.92(35060):svc_checkout@checkout_db:[29491]:LOG:  duration: 42.772 ms  statement: SELECT * FROM cart_items WHERE cart_id = $1
+2026-09-22 02:31:43 UTC:10.0.1.47(30738):svc_checkout@checkout_db:[29751]:LOG:  duration: 109.395 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:43 UTC:10.0.4.198(42907):svc_payment@payment_db:[23587]:LOG:  duration: 66.005 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:44 UTC:10.0.2.180(63428):svc_auth@auth_db:[31911]:LOG:  duration: 48.666 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:31:44 UTC:10.0.1.14(61242):svc_payment@payment_db:[14958]:LOG:  duration: 42.543 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:44 UTC:10.0.1.135(63164):svc_payment@payment_db:[21475]:LOG:  duration: 44.213 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:44 UTC:10.0.2.102(60696):svc_payment@payment_db:[27835]:LOG:  duration: 65.035 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:45 UTC:10.0.1.196(62567):svc_inventory@inventory_db:[31182]:LOG:  duration: 52.872 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:46 UTC:10.0.1.227(55485):svc_payment@payment_db:[11144]:LOG:  duration: 103.732 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:47 UTC:10.0.5.117(49919):svc_payment@payment_db:[13684]:LOG:  duration: 99.564 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:31:47 UTC:10.0.4.157(34686):svc_inventory@inventory_db:[13173]:LOG:  duration: 53.466 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:48 UTC:10.0.4.83(49647):svc_checkout@checkout_db:[25137]:LOG:  duration: 69.045 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:48 UTC:10.0.4.13(64781):svc_inventory@inventory_db:[15169]:LOG:  duration: 48.253 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:49 UTC:10.0.0.66(48523):svc_checkout@checkout_db:[27941]:LOG:  duration: 53.400 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:49 UTC:10.0.4.216(50340):svc_payment@payment_db:[30868]:LOG:  duration: 72.703 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:49 UTC:10.0.3.166(42101):svc_checkout@checkout_db:[27949]:LOG:  duration: 74.355 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:50 UTC:10.0.3.92(57914):svc_checkout@checkout_db:[16262]:LOG:  duration: 52.294 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:50 UTC:10.0.4.169(56566):svc_payment@payment_db:[19377]:LOG:  duration: 49.244 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:52 UTC:10.0.3.36(48744):svc_payment@payment_db:[15473]:LOG:  duration: 69.639 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:52 UTC:10.0.0.94(54136):svc_checkout@checkout_db:[18605]:LOG:  duration: 83.948 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:52 UTC:10.0.4.47(59234):svc_payment@payment_db:[22158]:LOG:  duration: 60.136 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:52 UTC:10.0.3.242(45941):svc_checkout@checkout_db:[30696]:LOG:  duration: 66.437 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:53 UTC:10.0.5.170(64551):svc_inventory@inventory_db:[15576]:LOG:  duration: 45.269 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:54 UTC:10.0.1.52(61570):svc_auth@auth_db:[21437]:LOG:  duration: 62.198 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:31:55 UTC:10.0.5.5(55756):svc_inventory@inventory_db:[29613]:LOG:  duration: 40.857 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:31:55 UTC:10.0.3.165(42370):svc_payment@payment_db:[28886]:LOG:  duration: 44.344 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:56 UTC:10.0.3.32(48348):svc_payment@payment_db:[19826]:LOG:  duration: 49.992 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:31:56 UTC:10.0.4.85(63218):svc_inventory@inventory_db:[29610]:LOG:  duration: 78.567 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:31:58 UTC:10.0.2.14(43600):svc_payment@payment_db:[15979]:LOG:  duration: 51.814 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:58 UTC:10.0.2.222(35951):svc_checkout@checkout_db:[31562]:LOG:  duration: 97.467 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:58 UTC:10.0.3.79(33434):svc_payment@payment_db:[30516]:LOG:  duration: 53.612 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:31:59 UTC:10.0.0.50(30823):svc_checkout@checkout_db:[28898]:LOG:  duration: 51.953 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:31:59 UTC:10.0.3.151(31072):svc_inventory@inventory_db:[13764]:LOG:  duration: 40.692 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:00 UTC:10.0.4.73(56886):svc_payment@payment_db:[16967]:LOG:  duration: 67.755 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:01 UTC:10.0.3.23(40841):svc_checkout@checkout_db:[25838]:LOG:  duration: 47.538 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:01 UTC:10.0.3.234(34132):svc_payment@payment_db:[14176]:LOG:  duration: 40.925 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:02 UTC:10.0.5.75(61766):svc_checkout@checkout_db:[17218]:LOG:  duration: 82.661 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:03 UTC:10.0.3.245(49166):svc_checkout@checkout_db:[29977]:LOG:  duration: 123.345 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:03 UTC:10.0.0.76(56059):svc_payment@payment_db:[20899]:LOG:  duration: 62.939 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:03 UTC:10.0.4.63(50852):svc_checkout@checkout_db:[29077]:LOG:  duration: 82.718 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:04 UTC:10.0.1.192(56198):svc_payment@payment_db:[24976]:LOG:  duration: 75.669 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:05 UTC:10.0.5.3(39769):svc_payment@payment_db:[18226]:LOG:  duration: 88.902 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:06 UTC:10.0.3.31(54488):svc_checkout@checkout_db:[13737]:LOG:  duration: 67.034 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:06 UTC:10.0.3.238(48476):svc_inventory@inventory_db:[27441]:LOG:  duration: 50.992 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:06 UTC:10.0.1.110(40591):svc_auth@auth_db:[26875]:LOG:  duration: 54.314 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:32:07 UTC:10.0.1.247(44496):svc_payment@payment_db:[26247]:LOG:  duration: 101.923 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:08 UTC:10.0.4.51(47151):svc_inventory@inventory_db:[25267]:LOG:  duration: 70.212 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:08 UTC:10.0.4.187(42965):svc_payment@payment_db:[19221]:LOG:  duration: 131.552 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:08 UTC:10.0.3.160(54390):svc_payment@payment_db:[31861]:LOG:  duration: 51.102 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:09 UTC:10.0.4.243(37777):svc_checkout@checkout_db:[18937]:LOG:  duration: 45.396 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:10 UTC:10.0.1.88(63458):svc_payment@payment_db:[22735]:LOG:  duration: 50.400 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:10 UTC:10.0.1.36(43384):svc_auth@auth_db:[15176]:LOG:  duration: 43.345 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:32:11 UTC:10.0.0.3(54408):svc_inventory@inventory_db:[13188]:LOG:  duration: 70.232 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:11 UTC:10.0.5.60(53929):svc_checkout@checkout_db:[28554]:LOG:  duration: 76.193 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:11 UTC:10.0.0.4(52065):svc_payment@payment_db:[20866]:LOG:  duration: 56.144 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:32:12 UTC:10.0.0.134(40020):svc_checkout@checkout_db:[22269]:LOG:  duration: 62.958 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:12 UTC:10.0.1.72(34942):svc_checkout@checkout_db:[24552]:LOG:  duration: 84.747 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:12 UTC:10.0.2.232(64733):svc_checkout@checkout_db:[23759]:LOG:  duration: 128.598 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:13 UTC:10.0.3.246(38448):svc_checkout@checkout_db:[15798]:LOG:  duration: 93.561 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:13 UTC:10.0.1.105(39963):svc_checkout@checkout_db:[24558]:LOG:  duration: 112.899 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:14 UTC:10.0.0.231(53412):svc_inventory@inventory_db:[21363]:LOG:  duration: 60.671 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:14 UTC:10.0.1.169(51201):svc_payment@payment_db:[18669]:LOG:  duration: 104.966 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:14 UTC:10.0.0.180(38846):svc_payment@payment_db:[16248]:LOG:  duration: 98.625 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:16 UTC:10.0.1.81(51628):svc_checkout@checkout_db:[29261]:LOG:  duration: 44.981 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:16 UTC:10.0.2.172(53076):svc_checkout@checkout_db:[15854]:LOG:  duration: 55.431 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:17 UTC:10.0.5.233(40502):svc_payment@payment_db:[25445]:LOG:  duration: 147.670 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:17 UTC:10.0.0.225(61662):svc_inventory@inventory_db:[11206]:LOG:  duration: 63.181 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:17 UTC:10.0.2.192(62278):svc_inventory@inventory_db:[30856]:LOG:  duration: 40.360 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:18 UTC:10.0.2.149(45559):svc_checkout@checkout_db:[14449]:LOG:  duration: 51.143 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:19 UTC:10.0.4.53(63007):svc_inventory@inventory_db:[19960]:LOG:  duration: 65.619 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:19 UTC:10.0.2.50(38792):svc_auth@auth_db:[25841]:LOG:  duration: 65.277 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:32:20 UTC:10.0.5.14(39864):svc_payment@payment_db:[20293]:LOG:  duration: 116.258 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:20 UTC:10.0.0.247(32006):svc_inventory@inventory_db:[21308]:LOG:  duration: 50.509 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:20 UTC:10.0.2.68(51850):svc_inventory@inventory_db:[25416]:LOG:  duration: 48.169 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:21 UTC:10.0.0.67(57127):svc_auth@auth_db:[19665]:LOG:  duration: 41.651 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:32:22 UTC:10.0.3.63(30358):svc_checkout@checkout_db:[10948]:LOG:  duration: 67.376 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:22 UTC:10.0.2.73(56643):svc_inventory@inventory_db:[20344]:LOG:  duration: 49.363 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:23 UTC:10.0.5.188(37332):svc_payment@payment_db:[25392]:LOG:  duration: 79.323 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:23 UTC:10.0.5.163(37772):svc_inventory@inventory_db:[18172]:LOG:  duration: 90.171 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:24 UTC:10.0.3.117(46927):svc_checkout@checkout_db:[30409]:LOG:  duration: 87.619 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:25 UTC:10.0.3.120(36653):svc_payment@payment_db:[25008]:LOG:  duration: 98.239 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:26 UTC:10.0.4.135(47877):svc_checkout@checkout_db:[18617]:LOG:  duration: 62.589 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:27 UTC:10.0.4.178(36019):svc_inventory@inventory_db:[12463]:LOG:  duration: 95.144 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:28 UTC:10.0.4.187(58214):svc_payment@payment_db:[26696]:LOG:  duration: 46.153 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:28 UTC:10.0.3.54(51708):svc_checkout@checkout_db:[10298]:LOG:  duration: 91.469 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:29 UTC:10.0.1.141(30162):svc_inventory@inventory_db:[21301]:LOG:  duration: 53.578 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:30 UTC:10.0.4.88(56891):svc_checkout@checkout_db:[12248]:LOG:  duration: 52.063 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:30 UTC:10.0.1.245(30504):svc_auth@auth_db:[22954]:LOG:  duration: 48.191 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:32:31 UTC:10.0.2.240(54660):svc_inventory@inventory_db:[14980]:LOG:  duration: 62.559 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:32 UTC:10.0.3.162(60075):svc_payment@payment_db:[26622]:LOG:  duration: 75.914 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:32 UTC:10.0.5.168(48582):svc_checkout@checkout_db:[13464]:LOG:  duration: 72.254 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:33 UTC:10.0.1.16(52666):svc_inventory@inventory_db:[21534]:LOG:  duration: 42.080 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:35 UTC:10.0.2.214(58890):svc_payment@payment_db:[18984]:LOG:  duration: 42.897 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:32:35 UTC:10.0.5.131(33476):svc_payment@payment_db:[17962]:LOG:  duration: 86.866 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:35 UTC:10.0.2.152(53173):svc_inventory@inventory_db:[11547]:LOG:  duration: 70.415 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:36 UTC:10.0.2.70(57354):svc_checkout@checkout_db:[12811]:LOG:  duration: 61.157 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:36 UTC:10.0.1.51(49776):svc_checkout@checkout_db:[13285]:LOG:  duration: 69.829 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:37 UTC:10.0.3.171(44994):svc_payment@payment_db:[19942]:LOG:  duration: 76.104 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:32:37 UTC:10.0.3.15(30467):svc_payment@payment_db:[22977]:LOG:  duration: 116.071 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:37 UTC:10.0.4.143(51662):svc_inventory@inventory_db:[25572]:LOG:  duration: 79.522 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:39 UTC:10.0.4.129(44840):svc_checkout@checkout_db:[17989]:LOG:  duration: 89.819 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:39 UTC:10.0.1.79(36973):svc_payment@payment_db:[29939]:LOG:  duration: 78.675 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:40 UTC:10.0.3.85(57290):svc_checkout@checkout_db:[25345]:LOG:  duration: 92.855 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:40 UTC:10.0.1.136(44595):svc_auth@auth_db:[16905]:LOG:  duration: 40.628 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:32:41 UTC:10.0.1.139(34350):svc_checkout@checkout_db:[23284]:LOG:  duration: 84.593 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:41 UTC:10.0.3.123(40697):svc_payment@payment_db:[11606]:LOG:  duration: 81.339 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:42 UTC:10.0.3.28(62862):svc_inventory@inventory_db:[23388]:LOG:  duration: 90.886 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:42 UTC:10.0.1.23(44448):svc_payment@payment_db:[24275]:LOG:  duration: 83.306 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:43 UTC:10.0.2.7(44060):svc_inventory@inventory_db:[11434]:LOG:  duration: 64.046 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:43 UTC:10.0.1.5(40261):svc_inventory@inventory_db:[13743]:LOG:  duration: 44.904 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:44 UTC:10.0.4.93(56481):svc_payment@payment_db:[19644]:LOG:  duration: 86.744 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:44 UTC:10.0.4.176(35539):svc_payment@payment_db:[19887]:LOG:  duration: 83.341 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:45 UTC:10.0.0.227(57590):svc_inventory@inventory_db:[12912]:LOG:  duration: 78.510 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:45 UTC:10.0.4.200(58217):svc_checkout@checkout_db:[18035]:LOG:  duration: 123.687 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:46 UTC:10.0.5.252(63709):svc_payment@payment_db:[14100]:LOG:  duration: 65.044 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:46 UTC:10.0.0.243(56805):svc_checkout@checkout_db:[30515]:LOG:  duration: 62.439 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:47 UTC:10.0.2.99(43659):svc_inventory@inventory_db:[17175]:LOG:  duration: 98.417 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:47 UTC:10.0.0.66(30568):svc_inventory@inventory_db:[25504]:LOG:  duration: 48.652 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:47 UTC:10.0.0.178(58785):svc_checkout@checkout_db:[28225]:LOG:  duration: 64.717 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:47 UTC:10.0.0.215(51812):svc_inventory@inventory_db:[29271]:LOG:  duration: 42.251 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:48 UTC:10.0.5.142(61260):svc_inventory@inventory_db:[29220]:LOG:  duration: 50.765 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:49 UTC:10.0.5.236(40062):svc_checkout@checkout_db:[19386]:LOG:  duration: 43.247 ms  statement: SELECT * FROM cart_items WHERE cart_id = $1
+2026-09-22 02:32:49 UTC:10.0.1.130(31621):svc_payment@payment_db:[13215]:LOG:  duration: 74.372 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:50 UTC:10.0.2.151(36215):svc_payment@payment_db:[12774]:LOG:  duration: 60.830 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:32:50 UTC:10.0.1.93(39637):svc_inventory@inventory_db:[27096]:LOG:  duration: 42.716 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:50 UTC:10.0.0.24(36930):svc_payment@payment_db:[17409]:LOG:  duration: 79.030 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:51 UTC:10.0.3.192(60946):svc_payment@payment_db:[10783]:LOG:  duration: 55.760 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:51 UTC:10.0.2.124(40138):svc_auth@auth_db:[28319]:LOG:  duration: 55.049 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:32:51 UTC:10.0.3.3(59960):svc_inventory@inventory_db:[11597]:LOG:  duration: 50.282 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:51 UTC:10.0.4.47(41000):svc_checkout@checkout_db:[18804]:LOG:  duration: 44.975 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:53 UTC:10.0.3.167(36365):svc_checkout@checkout_db:[16513]:LOG:  duration: 65.459 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:53 UTC:10.0.0.209(63403):svc_inventory@inventory_db:[13970]:LOG:  duration: 67.608 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:55 UTC:10.0.5.4(52912):svc_inventory@inventory_db:[14294]:LOG:  duration: 42.143 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:55 UTC:10.0.4.187(62693):svc_payment@payment_db:[30017]:LOG:  duration: 61.620 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:56 UTC:10.0.0.20(35564):svc_checkout@checkout_db:[22593]:LOG:  duration: 62.450 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:57 UTC:10.0.2.48(60960):svc_checkout@checkout_db:[19389]:LOG:  duration: 80.623 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:57 UTC:10.0.2.96(40188):svc_inventory@inventory_db:[26490]:LOG:  duration: 43.740 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:58 UTC:10.0.1.191(51910):svc_checkout@checkout_db:[10328]:LOG:  duration: 67.141 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:59 UTC:10.0.2.54(61276):svc_inventory@inventory_db:[24099]:LOG:  duration: 44.200 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:32:59 UTC:10.0.3.56(43285):svc_inventory@inventory_db:[18356]:LOG:  duration: 40.753 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:59 UTC:10.0.2.199(55172):svc_payment@payment_db:[27084]:LOG:  duration: 72.181 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:32:59 UTC:10.0.5.87(62273):svc_inventory@inventory_db:[11245]:LOG:  duration: 42.535 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:32:59 UTC:10.0.0.9(47809):svc_payment@payment_db:[21393]:LOG:  duration: 66.106 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:00 UTC:10.0.2.193(59476):svc_inventory@inventory_db:[10146]:LOG:  duration: 56.620 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:00 UTC:10.0.0.52(57789):svc_inventory@inventory_db:[11366]:LOG:  duration: 81.793 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:02 UTC:10.0.0.158(37931):svc_checkout@checkout_db:[22531]:LOG:  duration: 67.501 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:02 UTC:10.0.1.131(51363):svc_inventory@inventory_db:[22202]:LOG:  duration: 49.621 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:02 UTC:10.0.5.193(43193):svc_checkout@checkout_db:[29347]:LOG:  duration: 68.026 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:02 UTC:10.0.0.58(60923):svc_checkout@checkout_db:[17354]:LOG:  duration: 284.894 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:03 UTC:10.0.0.27(49321):svc_checkout@checkout_db:[11599]:LOG:  duration: 52.133 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:03 UTC:10.0.1.164(37853):svc_checkout@checkout_db:[28716]:LOG:  duration: 67.642 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:03 UTC:10.0.5.206(44059):svc_payment@payment_db:[21605]:LOG:  duration: 152.149 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:04 UTC:10.0.5.209(53763):svc_checkout@checkout_db:[24457]:LOG:  duration: 70.346 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:05 UTC:10.0.5.140(62843):svc_inventory@inventory_db:[10382]:LOG:  duration: 50.828 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:06 UTC:10.0.3.201(60217):svc_checkout@checkout_db:[26233]:LOG:  duration: 99.769 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:06 UTC:10.0.3.108(49165):svc_inventory@inventory_db:[16865]:LOG:  duration: 45.032 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:07 UTC:10.0.3.183(58143):svc_checkout@checkout_db:[17736]:LOG:  duration: 40.093 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:07 UTC:10.0.0.229(48003):svc_payment@payment_db:[30735]:LOG:  duration: 85.535 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:08 UTC:10.0.2.93(42781):svc_payment@payment_db:[26899]:LOG:  duration: 52.911 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:08 UTC:10.0.1.161(37619):svc_auth@auth_db:[31096]:LOG:  duration: 86.139 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:33:09 UTC:10.0.1.89(34523):svc_inventory@inventory_db:[15813]:LOG:  duration: 43.081 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:11 UTC:10.0.2.160(49645):svc_inventory@inventory_db:[26249]:LOG:  duration: 40.746 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:11 UTC:10.0.1.147(33677):svc_payment@payment_db:[19430]:LOG:  duration: 79.586 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:11 UTC:10.0.1.70(45382):svc_inventory@inventory_db:[26381]:LOG:  duration: 57.205 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:12 UTC:10.0.2.221(51740):svc_inventory@inventory_db:[16102]:LOG:  duration: 53.357 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:12 UTC:10.0.1.53(61831):svc_checkout@checkout_db:[31825]:LOG:  duration: 45.324 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:12 UTC:10.0.2.165(50880):svc_payment@payment_db:[24159]:LOG:  duration: 56.039 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:13 UTC:10.0.4.12(57742):svc_inventory@inventory_db:[29388]:LOG:  duration: 40.888 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:13 UTC:10.0.1.15(35951):svc_checkout@checkout_db:[10015]:LOG:  duration: 52.528 ms  statement: UPDATE cart_items SET quantity = quantity + $1 WHERE cart_id = $2 AND sku = $3
+2026-09-22 02:33:13 UTC:10.0.2.41(36193):svc_payment@payment_db:[16668]:LOG:  duration: 51.517 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:14 UTC:10.0.1.190(48765):svc_inventory@inventory_db:[10747]:LOG:  duration: 60.374 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:14 UTC:10.0.0.144(57015):svc_checkout@checkout_db:[12849]:LOG:  duration: 54.448 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:15 UTC:10.0.5.216(34869):svc_payment@payment_db:[31706]:LOG:  duration: 54.485 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:16 UTC:10.0.4.248(53098):svc_checkout@checkout_db:[24581]:LOG:  duration: 66.535 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:16 UTC:10.0.2.76(40603):svc_checkout@checkout_db:[29426]:LOG:  duration: 72.051 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:17 UTC:10.0.2.196(42056):svc_inventory@inventory_db:[18169]:LOG:  duration: 50.915 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:18 UTC:10.0.0.3(36622):svc_checkout@checkout_db:[21983]:LOG:  duration: 49.712 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:18 UTC:10.0.1.100(54141):svc_checkout@checkout_db:[31378]:LOG:  duration: 74.625 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:19 UTC:10.0.1.181(53522):svc_payment@payment_db:[24729]:LOG:  duration: 40.795 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:20 UTC:10.0.2.188(51261):svc_checkout@checkout_db:[26816]:LOG:  duration: 87.753 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:20 UTC:10.0.2.227(63998):svc_checkout@checkout_db:[21658]:LOG:  duration: 55.919 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:21 UTC:10.0.5.80(61294):svc_inventory@inventory_db:[31164]:LOG:  duration: 49.651 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:21 UTC:10.0.4.93(57866):svc_payment@payment_db:[30474]:LOG:  duration: 83.692 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:21 UTC:10.0.4.21(34664):svc_checkout@checkout_db:[26691]:LOG:  duration: 76.103 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:22 UTC:10.0.2.62(64679):svc_auth@auth_db:[11377]:LOG:  duration: 44.241 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:33:23 UTC:10.0.1.237(55312):svc_payment@payment_db:[25412]:LOG:  duration: 68.782 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:23 UTC:10.0.1.252(51812):svc_checkout@checkout_db:[30451]:LOG:  duration: 46.213 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:23 UTC:10.0.4.109(62145):svc_payment@payment_db:[18765]:LOG:  duration: 49.469 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:24 UTC:10.0.4.102(37994):svc_payment@payment_db:[27466]:LOG:  duration: 79.698 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:24 UTC:10.0.4.79(55324):svc_checkout@checkout_db:[19325]:LOG:  duration: 40.193 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:24 UTC:10.0.3.98(38223):svc_payment@payment_db:[10372]:LOG:  duration: 69.165 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:25 UTC:10.0.0.61(43804):svc_inventory@inventory_db:[27042]:LOG:  duration: 43.487 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:27 UTC:10.0.1.29(54310):svc_payment@payment_db:[21155]:LOG:  duration: 122.179 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:28 UTC:10.0.5.117(35908):svc_checkout@checkout_db:[17429]:LOG:  duration: 78.241 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:28 UTC:10.0.2.86(47525):svc_payment@payment_db:[27246]:LOG:  duration: 82.571 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:29 UTC:10.0.0.68(64045):svc_payment@payment_db:[12863]:LOG:  duration: 46.770 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:29 UTC:10.0.4.63(48680):svc_checkout@checkout_db:[29680]:LOG:  duration: 58.858 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:29 UTC:10.0.5.166(55752):svc_payment@payment_db:[24045]:LOG:  duration: 41.251 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:30 UTC:10.0.3.192(53206):svc_inventory@inventory_db:[15658]:LOG:  duration: 190.580 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:30 UTC:10.0.0.58(60765):svc_checkout@checkout_db:[27368]:LOG:  duration: 63.997 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:31 UTC:10.0.4.86(49209):svc_inventory@inventory_db:[31695]:LOG:  duration: 57.513 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:32 UTC:10.0.1.242(54776):svc_inventory@inventory_db:[27607]:LOG:  duration: 41.697 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:32 UTC:10.0.3.27(32130):svc_checkout@checkout_db:[16048]:LOG:  duration: 45.880 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:32 UTC:10.0.1.156(60150):svc_checkout@checkout_db:[10988]:LOG:  duration: 202.378 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:32 UTC:10.0.0.223(46247):svc_payment@payment_db:[12124]:LOG:  duration: 67.847 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:33 UTC:10.0.0.112(52193):svc_checkout@checkout_db:[31577]:LOG:  duration: 79.460 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:33 UTC:10.0.1.63(35863):svc_checkout@checkout_db:[23616]:LOG:  duration: 74.321 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:34 UTC:10.0.1.218(43339):svc_inventory@inventory_db:[22437]:LOG:  duration: 96.683 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:35 UTC:10.0.4.31(62273):svc_payment@payment_db:[22302]:LOG:  duration: 139.430 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:35 UTC:10.0.5.38(53466):svc_payment@payment_db:[13775]:LOG:  duration: 132.388 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:36 UTC:10.0.4.168(53772):svc_payment@payment_db:[28654]:LOG:  duration: 743.422 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:37 UTC:10.0.4.3(63279):svc_payment@payment_db:[25910]:LOG:  duration: 85.433 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:38 UTC:10.0.2.150(32438):svc_checkout@checkout_db:[23334]:LOG:  duration: 69.334 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:38 UTC:10.0.4.99(43339):svc_payment@payment_db:[24530]:LOG:  duration: 90.404 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:39 UTC:10.0.4.68(31235):svc_checkout@checkout_db:[14730]:LOG:  duration: 82.255 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:39 UTC:10.0.5.208(50843):svc_inventory@inventory_db:[12227]:LOG:  duration: 359.032 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:39 UTC:10.0.2.118(49973):svc_payment@payment_db:[13790]:LOG:  duration: 51.837 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:40 UTC:10.0.2.111(36877):svc_auth@auth_db:[27710]:LOG:  duration: 51.031 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:33:40 UTC:10.0.4.243(41539):svc_inventory@inventory_db:[20530]:LOG:  duration: 77.435 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:41 UTC:10.0.5.191(42563):svc_checkout@checkout_db:[27633]:LOG:  duration: 62.284 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:41 UTC:10.0.0.127(52349):svc_payment@payment_db:[18882]:LOG:  duration: 217.782 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:41 UTC:10.0.3.36(50409):svc_checkout@checkout_db:[20259]:LOG:  duration: 79.258 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:42 UTC:10.0.5.165(59618):svc_checkout@checkout_db:[14638]:LOG:  duration: 96.165 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:42 UTC:10.0.4.58(49339):svc_inventory@inventory_db:[25047]:LOG:  duration: 55.698 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:43 UTC:10.0.5.44(45853):svc_checkout@checkout_db:[24370]:LOG:  duration: 43.935 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:44 UTC:10.0.1.121(30042):svc_inventory@inventory_db:[23739]:LOG:  duration: 40.746 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:44 UTC:10.0.0.158(49289):svc_checkout@checkout_db:[13631]:LOG:  duration: 62.427 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:44 UTC:10.0.0.227(42098):svc_payment@payment_db:[29119]:LOG:  duration: 50.655 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:44 UTC:10.0.2.16(62142):svc_payment@payment_db:[12784]:LOG:  duration: 61.326 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:45 UTC:10.0.1.230(47889):svc_inventory@inventory_db:[15863]:LOG:  duration: 136.758 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:46 UTC:10.0.0.89(34733):svc_checkout@checkout_db:[12656]:LOG:  duration: 54.228 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:47 UTC:10.0.0.248(51619):svc_checkout@checkout_db:[21861]:LOG:  duration: 79.619 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:47 UTC:10.0.4.233(31070):svc_inventory@inventory_db:[14011]:LOG:  duration: 56.459 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:47 UTC:10.0.0.63(51732):svc_payment@payment_db:[18821]:LOG:  duration: 49.207 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:48 UTC:10.0.1.118(48503):svc_checkout@checkout_db:[21826]:LOG:  duration: 108.423 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:48 UTC:10.0.3.212(39779):svc_checkout@checkout_db:[20764]:LOG:  duration: 51.446 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:49 UTC:10.0.0.242(44754):svc_inventory@inventory_db:[10456]:LOG:  duration: 58.968 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:49 UTC:10.0.3.224(41534):svc_payment@payment_db:[17395]:LOG:  duration: 58.694 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:50 UTC:10.0.1.76(42564):svc_payment@payment_db:[15940]:LOG:  duration: 47.451 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:51 UTC:10.0.1.203(41824):svc_inventory@inventory_db:[24362]:LOG:  duration: 44.895 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:51 UTC:10.0.3.188(45563):svc_inventory@inventory_db:[20707]:LOG:  duration: 63.216 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:53 UTC:10.0.0.235(55014):svc_payment@payment_db:[23240]:LOG:  duration: 43.863 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:53 UTC:10.0.0.27(49050):svc_inventory@inventory_db:[28994]:LOG:  duration: 67.770 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:33:54 UTC:10.0.4.214(56208):svc_payment@payment_db:[27727]:LOG:  duration: 73.982 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:55 UTC:10.0.2.121(32631):svc_checkout@checkout_db:[11164]:LOG:  duration: 75.168 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:33:56 UTC:10.0.0.82(46462):svc_inventory@inventory_db:[18588]:LOG:  duration: 45.894 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:56 UTC:10.0.2.25(36320):svc_payment@payment_db:[25201]:LOG:  duration: 72.639 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:33:58 UTC:10.0.1.193(39827):svc_auth@auth_db:[29979]:LOG:  duration: 45.585 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:33:58 UTC:10.0.5.145(52571):svc_checkout@checkout_db:[21842]:LOG:  duration: 48.035 ms  statement: UPDATE cart_items SET quantity = quantity + $1 WHERE cart_id = $2 AND sku = $3
+2026-09-22 02:33:59 UTC:10.0.1.10(42621):svc_inventory@inventory_db:[23325]:LOG:  duration: 51.507 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:33:59 UTC:10.0.0.8(48344):svc_inventory@inventory_db:[24401]:LOG:  duration: 83.616 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:00 UTC:10.0.5.254(58873):svc_checkout@checkout_db:[21244]:LOG:  duration: 41.560 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:00 UTC:10.0.0.116(64961):svc_inventory@inventory_db:[17782]:LOG:  duration: 47.015 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:00 UTC:10.0.4.80(57189):svc_payment@payment_db:[28781]:LOG:  duration: 54.307 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:01 UTC:10.0.0.105(52575):svc_payment@payment_db:[18518]:LOG:  duration: 70.349 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:01 UTC:10.0.0.53(31757):svc_inventory@inventory_db:[21997]:LOG:  duration: 44.375 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:02 UTC:10.0.1.74(58988):svc_inventory@inventory_db:[18413]:LOG:  duration: 68.059 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:03 UTC:10.0.1.116(41335):svc_checkout@checkout_db:[15820]:LOG:  duration: 91.988 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:03 UTC:10.0.2.5(63657):svc_payment@payment_db:[12280]:LOG:  duration: 62.813 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:03 UTC:10.0.0.254(57714):svc_checkout@checkout_db:[27645]:LOG:  duration: 72.324 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:04 UTC:10.0.5.247(52761):svc_checkout@checkout_db:[20660]:LOG:  duration: 83.944 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:04 UTC:10.0.3.46(38209):svc_payment@payment_db:[14486]:LOG:  duration: 86.901 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:05 UTC:10.0.5.229(62474):svc_checkout@checkout_db:[11206]:LOG:  duration: 53.652 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:05 UTC:10.0.5.155(59592):svc_checkout@checkout_db:[20470]:LOG:  duration: 98.274 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:06 UTC:10.0.1.48(33022):svc_checkout@checkout_db:[15902]:LOG:  duration: 42.511 ms  statement: UPDATE cart_items SET quantity = quantity + $1 WHERE cart_id = $2 AND sku = $3
+2026-09-22 02:34:06 UTC:10.0.3.105(39446):svc_checkout@checkout_db:[14581]:LOG:  duration: 61.551 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:07 UTC:10.0.0.233(52535):svc_payment@payment_db:[26406]:LOG:  duration: 45.941 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:08 UTC:10.0.4.249(55457):svc_payment@payment_db:[30551]:LOG:  duration: 59.923 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:08 UTC:10.0.2.105(42102):svc_checkout@checkout_db:[25868]:LOG:  duration: 167.259 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:08 UTC:10.0.5.109(34692):svc_inventory@inventory_db:[20538]:LOG:  duration: 79.464 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:09 UTC:10.0.1.132(47520):svc_checkout@checkout_db:[10742]:LOG:  duration: 93.643 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:09 UTC:10.0.0.189(31450):svc_checkout@checkout_db:[28550]:LOG:  duration: 88.310 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:09 UTC:10.0.1.169(42697):svc_inventory@inventory_db:[10781]:LOG:  duration: 210.361 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:10 UTC:10.0.2.8(53739):svc_checkout@checkout_db:[17922]:LOG:  duration: 48.635 ms  statement: UPDATE cart_items SET quantity = quantity + $1 WHERE cart_id = $2 AND sku = $3
+2026-09-22 02:34:10 UTC:10.0.0.167(56816):svc_auth@auth_db:[14169]:LOG:  duration: 53.186 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:34:10 UTC:10.0.5.7(37544):svc_inventory@inventory_db:[16175]:LOG:  duration: 94.072 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:11 UTC:10.0.0.119(59768):svc_payment@payment_db:[14086]:LOG:  duration: 45.870 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:34:11 UTC:10.0.3.14(55205):svc_payment@payment_db:[31933]:LOG:  duration: 69.252 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:12 UTC:10.0.1.88(63025):svc_inventory@inventory_db:[31067]:LOG:  duration: 42.278 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:12 UTC:10.0.5.85(47297):svc_inventory@inventory_db:[10233]:LOG:  duration: 112.368 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:12 UTC:10.0.0.9(49484):svc_auth@auth_db:[20508]:LOG:  duration: 41.761 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:34:13 UTC:10.0.3.121(48784):svc_checkout@checkout_db:[28536]:LOG:  duration: 44.160 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:13 UTC:10.0.0.147(42626):svc_inventory@inventory_db:[19996]:LOG:  duration: 105.553 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:13 UTC:10.0.4.94(35573):svc_auth@auth_db:[28482]:LOG:  duration: 68.039 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:34:14 UTC:10.0.2.41(41463):svc_payment@payment_db:[17764]:LOG:  duration: 56.821 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:15 UTC:10.0.3.26(49203):svc_payment@payment_db:[29415]:LOG:  duration: 108.615 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:15 UTC:10.0.2.157(56313):svc_checkout@checkout_db:[15978]:ERROR:  deadlock detected
+2026-09-22 02:34:15 UTC:10.0.2.157(60730):svc_checkout@checkout_db:[15978]:STATEMENT:  INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:15 UTC:10.0.0.231(44119):svc_inventory@inventory_db:[17293]:LOG:  duration: 67.709 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:16 UTC:10.0.3.204(64726):svc_checkout@checkout_db:[25885]:LOG:  duration: 53.605 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:16 UTC:10.0.1.41(34493):svc_payment@payment_db:[17497]:LOG:  duration: 72.731 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:17 UTC:10.0.0.138(35335):svc_inventory@inventory_db:[14271]:LOG:  duration: 41.027 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:17 UTC:10.0.2.78(35832):svc_payment@payment_db:[12753]:LOG:  duration: 87.815 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:18 UTC:10.0.2.49(40169):svc_checkout@checkout_db:[21799]:LOG:  duration: 71.884 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:18 UTC:10.0.1.176(58606):svc_checkout@checkout_db:[30964]:LOG:  duration: 49.979 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:19 UTC:10.0.1.234(51481):svc_inventory@inventory_db:[18862]:LOG:  duration: 50.545 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:19 UTC:10.0.3.38(31788):svc_checkout@checkout_db:[26434]:LOG:  duration: 85.405 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:21 UTC:10.0.3.34(60606):svc_checkout@checkout_db:[14536]:LOG:  duration: 76.224 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:22 UTC:10.0.1.157(38903):svc_checkout@checkout_db:[28108]:LOG:  duration: 90.529 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:22 UTC:10.0.2.137(40877):svc_checkout@checkout_db:[29354]:LOG:  duration: 118.764 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:22 UTC:10.0.3.200(47146):svc_auth@auth_db:[20958]:LOG:  duration: 58.346 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:34:23 UTC:10.0.0.160(34095):svc_checkout@checkout_db:[10902]:LOG:  duration: 57.349 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:24 UTC:10.0.0.50(41721):svc_inventory@inventory_db:[18364]:LOG:  duration: 55.253 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:24 UTC:10.0.2.35(49175):svc_auth@auth_db:[19285]:LOG:  duration: 85.378 ms  statement: UPDATE sessions SET expires_at = $1 WHERE refresh_token = $2
+2026-09-22 02:34:25 UTC:10.0.1.247(38819):svc_payment@payment_db:[20465]:LOG:  duration: 93.605 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:25 UTC:10.0.2.119(48852):svc_inventory@inventory_db:[16938]:LOG:  duration: 41.230 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:26 UTC:10.0.5.117(48245):svc_inventory@inventory_db:[31114]:LOG:  duration: 53.122 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:28 UTC:10.0.4.93(61809):svc_payment@payment_db:[17483]:LOG:  duration: 85.741 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:28 UTC:10.0.5.126(44178):svc_inventory@inventory_db:[13429]:LOG:  duration: 47.100 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:30 UTC:10.0.2.183(50346):svc_payment@payment_db:[15375]:LOG:  duration: 83.012 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:30 UTC:10.0.3.81(34728):svc_checkout@checkout_db:[23751]:LOG:  duration: 63.914 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:30 UTC:10.0.5.137(62971):svc_inventory@inventory_db:[26289]:LOG:  duration: 41.412 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:31 UTC:10.0.4.168(57044):svc_checkout@checkout_db:[21431]:LOG:  duration: 65.392 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:31 UTC:10.0.0.155(32145):svc_inventory@inventory_db:[25669]:LOG:  duration: 55.761 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:31 UTC:10.0.5.3(40952):svc_checkout@checkout_db:[23674]:LOG:  duration: 113.023 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:31 UTC:10.0.0.129(33393):svc_checkout@checkout_db:[18355]:LOG:  duration: 43.986 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:33 UTC:10.0.2.90(35991):svc_checkout@checkout_db:[18208]:LOG:  duration: 47.372 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:33 UTC:10.0.5.174(56723):svc_payment@payment_db:[22109]:LOG:  duration: 61.141 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:34 UTC:10.0.5.160(60296):svc_payment@payment_db:[18370]:LOG:  duration: 72.691 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:35 UTC:10.0.3.54(36311):svc_payment@payment_db:[25876]:LOG:  duration: 44.153 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:35 UTC:10.0.1.42(50555):svc_inventory@inventory_db:[20262]:LOG:  duration: 62.908 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:36 UTC:10.0.3.151(61640):svc_checkout@checkout_db:[30639]:LOG:  duration: 48.777 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:37 UTC:10.0.4.158(42969):svc_checkout@checkout_db:[13160]:LOG:  duration: 51.661 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:37 UTC:10.0.5.153(50756):svc_checkout@checkout_db:[15979]:LOG:  duration: 51.443 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:38 UTC:10.0.4.118(64729):svc_payment@payment_db:[25332]:LOG:  duration: 50.959 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:38 UTC:10.0.0.132(53778):svc_payment@payment_db:[21771]:LOG:  duration: 71.370 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:39 UTC:10.0.3.112(43759):svc_payment@payment_db:[30140]:LOG:  duration: 73.363 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:39 UTC:10.0.3.170(32580):svc_inventory@inventory_db:[20138]:LOG:  duration: 46.030 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:39 UTC:10.0.5.172(48561):svc_checkout@checkout_db:[12813]:LOG:  duration: 57.816 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:40 UTC:10.0.1.220(40991):svc_checkout@checkout_db:[27827]:LOG:  duration: 50.792 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:40 UTC:10.0.5.51(45532):svc_inventory@inventory_db:[22984]:LOG:  duration: 58.098 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:40 UTC:10.0.4.24(45064):svc_checkout@checkout_db:[23341]:LOG:  duration: 54.891 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:41 UTC:10.0.0.85(39048):svc_payment@payment_db:[22282]:LOG:  duration: 104.102 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:41 UTC:10.0.0.228(57264):svc_inventory@inventory_db:[31944]:LOG:  duration: 42.100 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:42 UTC:10.0.0.52(58069):svc_checkout@checkout_db:[13821]:LOG:  duration: 48.757 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:42 UTC:10.0.0.174(62304):svc_payment@payment_db:[14984]:LOG:  duration: 81.362 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:42 UTC:10.0.4.6(32489):svc_inventory@inventory_db:[25399]:LOG:  duration: 62.915 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:43 UTC:10.0.1.113(63844):svc_checkout@checkout_db:[22924]:LOG:  duration: 63.843 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:44 UTC:10.0.0.151(30021):svc_inventory@inventory_db:[20861]:LOG:  duration: 45.603 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:46 UTC:10.0.1.105(58137):svc_checkout@checkout_db:[26634]:ERROR:  deadlock detected
+2026-09-22 02:34:46 UTC:10.0.1.105(33735):svc_checkout@checkout_db:[26634]:STATEMENT:  INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:47 UTC:10.0.3.22(56280):svc_checkout@checkout_db:[16807]:LOG:  duration: 108.499 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:47 UTC:10.0.4.133(45299):svc_checkout@checkout_db:[30627]:LOG:  duration: 56.130 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:48 UTC:10.0.4.68(31597):svc_checkout@checkout_db:[25995]:LOG:  duration: 62.941 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:48 UTC:10.0.1.99(47955):svc_payment@payment_db:[16452]:LOG:  duration: 59.282 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:49 UTC:10.0.2.29(38384):svc_inventory@inventory_db:[30163]:LOG:  duration: 46.979 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:34:49 UTC:10.0.4.209(61113):svc_checkout@checkout_db:[17861]:LOG:  duration: 76.605 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:49 UTC:10.0.5.138(62834):svc_auth@auth_db:[30966]:LOG:  duration: 46.158 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:34:53 UTC:10.0.5.148(44866):svc_inventory@inventory_db:[12992]:LOG:  duration: 56.125 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:53 UTC:10.0.1.54(51904):svc_checkout@checkout_db:[17989]:LOG:  duration: 51.823 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:53 UTC:10.0.2.187(60575):svc_payment@payment_db:[25454]:LOG:  duration: 51.666 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:53 UTC:10.0.1.237(34206):svc_auth@auth_db:[20881]:LOG:  duration: 43.085 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:34:54 UTC:10.0.4.194(40778):svc_payment@payment_db:[16425]:LOG:  duration: 63.278 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:54 UTC:10.0.3.202(34007):svc_checkout@checkout_db:[27874]:LOG:  duration: 140.134 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:55 UTC:10.0.3.64(54244):svc_checkout@checkout_db:[13601]:LOG:  duration: 77.071 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:55 UTC:10.0.3.15(43715):svc_checkout@checkout_db:[11293]:LOG:  duration: 54.795 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:56 UTC:10.0.0.210(37970):svc_payment@payment_db:[26959]:LOG:  duration: 53.405 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:56 UTC:10.0.5.219(58291):svc_checkout@checkout_db:[17301]:LOG:  duration: 102.261 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:56 UTC:10.0.1.6(58063):svc_auth@auth_db:[21294]:LOG:  duration: 42.576 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:34:57 UTC:10.0.4.23(55855):svc_checkout@checkout_db:[20797]:LOG:  duration: 55.061 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:57 UTC:10.0.3.187(36974):svc_checkout@checkout_db:[28518]:LOG:  duration: 96.768 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:57 UTC:10.0.0.45(49731):svc_inventory@inventory_db:[18240]:LOG:  duration: 40.405 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:34:58 UTC:10.0.1.252(32361):svc_payment@payment_db:[10169]:LOG:  duration: 147.904 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:58 UTC:10.0.2.63(34265):svc_payment@payment_db:[17300]:LOG:  duration: 62.600 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:34:59 UTC:10.0.2.190(39892):svc_payment@payment_db:[25027]:LOG:  duration: 45.279 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:00 UTC:10.0.0.38(40574):svc_checkout@checkout_db:[23773]:LOG:  duration: 49.109 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:01 UTC:10.0.2.215(47328):svc_inventory@inventory_db:[10219]:LOG:  duration: 53.726 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:02 UTC:10.0.2.230(49290):svc_checkout@checkout_db:[17519]:LOG:  duration: 298.369 ms  statement: UPDATE cart_items SET quantity = quantity + $1 WHERE cart_id = $2 AND sku = $3
+2026-09-22 02:35:02 UTC:10.0.4.226(59150):svc_checkout@checkout_db:[27964]:LOG:  duration: 58.140 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:02 UTC:10.0.2.88(64325):svc_payment@payment_db:[29391]:LOG:  duration: 92.313 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:03 UTC:10.0.1.87(37672):svc_auth@auth_db:[15574]:LOG:  duration: 71.446 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:35:03 UTC:10.0.1.8(41130):svc_checkout@checkout_db:[20508]:LOG:  duration: 92.447 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:04 UTC:10.0.1.76(47436):svc_inventory@inventory_db:[22660]:LOG:  duration: 79.357 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:05 UTC:10.0.1.120(63286):svc_payment@payment_db:[23405]:LOG:  duration: 43.269 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:06 UTC:10.0.3.193(32903):svc_inventory@inventory_db:[13720]:LOG:  duration: 48.155 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:06 UTC:10.0.5.156(46617):svc_payment@payment_db:[20012]:LOG:  duration: 94.963 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:06 UTC:10.0.2.94(44526):svc_payment@payment_db:[16306]:LOG:  duration: 59.053 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:06 UTC:10.0.5.0(33082):svc_checkout@checkout_db:[17252]:LOG:  duration: 128.579 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:07 UTC:10.0.1.139(55005):svc_checkout@checkout_db:[21263]:LOG:  duration: 41.693 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:07 UTC:10.0.5.217(47583):svc_checkout@checkout_db:[15405]:LOG:  duration: 78.489 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:07 UTC:10.0.2.9(49883):svc_inventory@inventory_db:[19181]:LOG:  duration: 90.271 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:08 UTC:10.0.4.224(44290):svc_payment@payment_db:[26661]:LOG:  duration: 68.796 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:08 UTC:10.0.3.26(62673):svc_checkout@checkout_db:[29654]:LOG:  duration: 143.404 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:08 UTC:10.0.2.30(44994):svc_checkout@checkout_db:[24384]:LOG:  duration: 52.265 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:08 UTC:10.0.2.71(36962):svc_auth@auth_db:[12957]:LOG:  duration: 41.284 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:35:09 UTC:10.0.5.73(32578):svc_checkout@checkout_db:[15618]:LOG:  duration: 47.455 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:09 UTC:10.0.1.174(43519):svc_inventory@inventory_db:[23904]:LOG:  duration: 46.578 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:10 UTC:10.0.5.134(48242):svc_payment@payment_db:[29123]:LOG:  duration: 148.856 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:10 UTC:10.0.5.40(62602):svc_auth@auth_db:[29065]:LOG:  duration: 44.762 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:35:11 UTC:10.0.1.210(45943):svc_payment@payment_db:[16311]:LOG:  duration: 87.055 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:11 UTC:10.0.5.28(57888):svc_payment@payment_db:[14996]:LOG:  duration: 74.792 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:11 UTC:10.0.3.239(32677):svc_payment@payment_db:[25822]:LOG:  duration: 51.373 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:11 UTC:10.0.2.165(47430):svc_auth@auth_db:[27692]:LOG:  duration: 49.208 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:35:12 UTC:10.0.5.46(57197):svc_checkout@checkout_db:[26013]:LOG:  duration: 139.644 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:12 UTC:10.0.1.58(30792):svc_inventory@inventory_db:[12806]:LOG:  duration: 53.703 ms  statement: UPDATE inventory SET quantity = quantity + $1 WHERE sku = $2
+2026-09-22 02:35:12 UTC:10.0.3.211(38755):svc_payment@payment_db:[17267]:LOG:  duration: 64.161 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:13 UTC:10.0.4.254(47459):svc_payment@payment_db:[22808]:LOG:  duration: 53.287 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:16 UTC:10.0.1.153(58267):svc_checkout@checkout_db:[23452]:LOG:  duration: 67.021 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:16 UTC:10.0.5.228(53193):svc_inventory@inventory_db:[12811]:LOG:  duration: 69.690 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:16 UTC:10.0.4.18(53697):svc_checkout@checkout_db:[29266]:LOG:  duration: 55.165 ms  statement: SELECT * FROM cart_items WHERE cart_id = $1
+2026-09-22 02:35:16 UTC:10.0.3.213(46237):svc_inventory@inventory_db:[19648]:LOG:  duration: 44.203 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:17 UTC:10.0.1.90(56933):svc_checkout@checkout_db:[18073]:LOG:  duration: 48.818 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:18 UTC:10.0.2.169(58182):svc_checkout@checkout_db:[31318]:LOG:  duration: 46.959 ms  statement: UPDATE cart_items SET quantity = quantity + $1 WHERE cart_id = $2 AND sku = $3
+2026-09-22 02:35:18 UTC:10.0.3.143(48181):svc_payment@payment_db:[29743]:LOG:  duration: 77.361 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:19 UTC:10.0.3.166(34339):svc_inventory@inventory_db:[20784]:LOG:  duration: 45.394 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:19 UTC:10.0.5.184(63317):svc_checkout@checkout_db:[16044]:LOG:  duration: 72.132 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:20 UTC:10.0.4.186(40401):svc_payment@payment_db:[16157]:LOG:  duration: 118.441 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:22 UTC:10.0.2.248(42546):svc_inventory@inventory_db:[14002]:LOG:  duration: 60.481 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:22 UTC:10.0.4.70(61441):svc_payment@payment_db:[22341]:LOG:  duration: 88.431 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:22 UTC:10.0.1.39(60976):svc_checkout@checkout_db:[19560]:LOG:  duration: 67.770 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:22 UTC:10.0.4.125(44855):svc_payment@payment_db:[28745]:LOG:  duration: 50.135 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:23 UTC:10.0.1.25(62984):svc_checkout@checkout_db:[10176]:LOG:  duration: 56.072 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:23 UTC:10.0.3.248(56276):svc_payment@payment_db:[20129]:LOG:  duration: 66.495 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:24 UTC:10.0.0.53(54878):svc_auth@auth_db:[26175]:LOG:  duration: 40.655 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:35:24 UTC:10.0.4.61(49224):svc_inventory@inventory_db:[17399]:LOG:  duration: 46.427 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:25 UTC:10.0.5.211(62731):svc_checkout@checkout_db:[28981]:LOG:  duration: 81.592 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:25 UTC:10.0.2.8(30416):svc_checkout@checkout_db:[11738]:LOG:  duration: 97.435 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:25 UTC:10.0.2.219(52924):svc_payment@payment_db:[15263]:LOG:  duration: 99.562 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:26 UTC:10.0.4.81(57591):svc_inventory@inventory_db:[18484]:LOG:  duration: 44.198 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:27 UTC:10.0.3.125(63401):svc_inventory@inventory_db:[29945]:LOG:  duration: 42.183 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:27 UTC:10.0.0.253(62431):svc_inventory@inventory_db:[25193]:LOG:  duration: 45.072 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:28 UTC:10.0.5.101(30357):svc_payment@payment_db:[12885]:LOG:  duration: 72.151 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:29 UTC:10.0.2.31(39254):svc_inventory@inventory_db:[13255]:LOG:  duration: 89.504 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:29 UTC:10.0.5.39(49449):svc_checkout@checkout_db:[26356]:LOG:  duration: 86.277 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:30 UTC:10.0.3.153(50532):svc_checkout@checkout_db:[10777]:LOG:  duration: 41.484 ms  statement: SELECT * FROM cart_items WHERE cart_id = $1
+2026-09-22 02:35:30 UTC:10.0.1.197(55284):svc_checkout@checkout_db:[16424]:LOG:  duration: 66.609 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:30 UTC:10.0.3.196(52455):svc_inventory@inventory_db:[19479]:LOG:  duration: 47.140 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:31 UTC:10.0.5.75(54980):svc_checkout@checkout_db:[23402]:LOG:  duration: 105.560 ms  statement: SELECT * FROM cart_items WHERE cart_id = $1
+2026-09-22 02:35:31 UTC:10.0.3.180(40510):svc_payment@payment_db:[22532]:LOG:  duration: 53.469 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:31 UTC:10.0.2.229(40577):svc_inventory@inventory_db:[30357]:LOG:  duration: 40.107 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:31 UTC:10.0.3.181(54895):svc_payment@payment_db:[16631]:LOG:  duration: 49.043 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:32 UTC:10.0.0.53(53702):svc_checkout@checkout_db:[25773]:LOG:  duration: 182.487 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:32 UTC:10.0.5.65(47500):svc_checkout@checkout_db:[18722]:LOG:  duration: 65.493 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:33 UTC:10.0.4.133(32579):svc_payment@payment_db:[29307]:LOG:  duration: 89.447 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:33 UTC:10.0.4.235(64517):svc_payment@payment_db:[20217]:LOG:  duration: 50.672 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:34 UTC:10.0.3.46(40353):svc_payment@payment_db:[10419]:LOG:  duration: 100.622 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:34 UTC:10.0.5.47(59333):svc_inventory@inventory_db:[28558]:LOG:  duration: 47.342 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:34 UTC:10.0.3.132(45134):svc_inventory@inventory_db:[16378]:LOG:  duration: 61.143 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:36 UTC:10.0.3.219(34575):svc_checkout@checkout_db:[22685]:LOG:  duration: 67.497 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:37 UTC:10.0.3.67(33017):svc_payment@payment_db:[31750]:LOG:  duration: 42.539 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:38 UTC:10.0.2.116(57911):svc_inventory@inventory_db:[26055]:LOG:  duration: 55.595 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:39 UTC:10.0.2.68(43227):svc_payment@payment_db:[31604]:LOG:  duration: 46.154 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:39 UTC:10.0.4.244(63118):svc_checkout@checkout_db:[22208]:LOG:  duration: 98.957 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:41 UTC:10.0.1.100(60185):svc_checkout@checkout_db:[17728]:LOG:  duration: 49.348 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:41 UTC:10.0.5.214(39709):svc_inventory@inventory_db:[22473]:LOG:  duration: 48.830 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:41 UTC:10.0.3.59(46717):svc_checkout@checkout_db:[28225]:LOG:  duration: 42.161 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:42 UTC:10.0.2.253(45716):svc_checkout@checkout_db:[17180]:LOG:  duration: 51.935 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:43 UTC:10.0.1.184(58717):svc_payment@payment_db:[15790]:LOG:  duration: 63.289 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:43 UTC:10.0.4.53(32950):svc_payment@payment_db:[16844]:LOG:  duration: 40.296 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:45 UTC:10.0.0.66(64353):svc_payment@payment_db:[29213]:LOG:  duration: 124.206 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:45 UTC:10.0.0.1(42371):svc_inventory@inventory_db:[14222]:LOG:  duration: 44.493 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:46 UTC:10.0.0.190(44866):svc_checkout@checkout_db:[20659]:LOG:  duration: 92.286 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:46 UTC:10.0.3.204(45872):svc_payment@payment_db:[24148]:LOG:  duration: 75.880 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:47 UTC:10.0.1.85(57238):svc_payment@payment_db:[18171]:LOG:  duration: 96.288 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:47 UTC:10.0.3.210(32518):svc_payment@payment_db:[19884]:LOG:  duration: 55.484 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:48 UTC:10.0.2.99(36416):svc_inventory@inventory_db:[26677]:LOG:  duration: 78.191 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:49 UTC:10.0.4.10(43199):svc_checkout@checkout_db:[20538]:LOG:  duration: 55.230 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:49 UTC:10.0.1.99(60882):svc_payment@payment_db:[14700]:LOG:  duration: 55.961 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:50 UTC:10.0.5.108(59205):svc_payment@payment_db:[23202]:LOG:  duration: 90.123 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:50 UTC:10.0.1.46(57733):svc_payment@payment_db:[14579]:LOG:  duration: 74.695 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:50 UTC:10.0.2.224(37716):svc_checkout@checkout_db:[23434]:LOG:  duration: 75.974 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:50 UTC:10.0.1.121(61788):svc_payment@payment_db:[27618]:LOG:  duration: 59.971 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:51 UTC:10.0.2.73(40972):svc_auth@auth_db:[26843]:LOG:  duration: 52.837 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:35:51 UTC:10.0.2.75(30249):svc_checkout@checkout_db:[13526]:LOG:  duration: 62.766 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:52 UTC:10.0.3.193(31718):svc_inventory@inventory_db:[15356]:LOG:  duration: 47.381 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:53 UTC:10.0.0.180(61368):svc_inventory@inventory_db:[22620]:LOG:  duration: 113.319 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:53 UTC:10.0.3.104(48252):svc_payment@payment_db:[23492]:LOG:  duration: 74.789 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:35:53 UTC:10.0.5.60(40662):svc_checkout@checkout_db:[19756]:LOG:  duration: 64.189 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:54 UTC:10.0.1.123(59352):svc_inventory@inventory_db:[25238]:LOG:  duration: 50.510 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:55 UTC:10.0.3.189(40512):svc_checkout@checkout_db:[19742]:LOG:  duration: 42.297 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:56 UTC:10.0.0.84(43808):svc_payment@payment_db:[15278]:LOG:  duration: 87.531 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:57 UTC:10.0.4.193(56009):svc_checkout@checkout_db:[14799]:LOG:  duration: 53.885 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:57 UTC:10.0.0.189(42096):svc_inventory@inventory_db:[15631]:LOG:  duration: 51.572 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:35:57 UTC:10.0.4.165(33326):svc_payment@payment_db:[10009]:LOG:  duration: 65.392 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:35:59 UTC:10.0.2.254(41261):svc_inventory@inventory_db:[26454]:LOG:  duration: 42.447 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:35:59 UTC:10.0.5.65(42490):svc_checkout@checkout_db:[20373]:LOG:  duration: 51.439 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:00 UTC:10.0.2.245(59035):svc_payment@payment_db:[30139]:LOG:  duration: 41.897 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:00 UTC:10.0.0.39(54290):svc_checkout@checkout_db:[19694]:LOG:  duration: 55.285 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:00 UTC:10.0.2.192(33562):svc_inventory@inventory_db:[23260]:LOG:  duration: 56.198 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:02 UTC:10.0.3.25(56031):svc_checkout@checkout_db:[21138]:LOG:  duration: 60.364 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:03 UTC:10.0.0.240(31344):svc_payment@payment_db:[25054]:LOG:  duration: 63.343 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:03 UTC:10.0.1.48(39083):svc_checkout@checkout_db:[27420]:LOG:  duration: 103.599 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:04 UTC:10.0.5.242(63540):svc_inventory@inventory_db:[31842]:LOG:  duration: 66.950 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:05 UTC:10.0.1.8(50089):svc_payment@payment_db:[28889]:LOG:  duration: 92.800 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:05 UTC:10.0.4.202(55984):svc_checkout@checkout_db:[13581]:LOG:  duration: 72.472 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:05 UTC:10.0.2.96(54472):svc_inventory@inventory_db:[29686]:LOG:  duration: 42.582 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:06 UTC:10.0.2.39(46653):svc_payment@payment_db:[15127]:LOG:  duration: 68.596 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:06 UTC:10.0.2.90(41198):svc_auth@auth_db:[16287]:LOG:  duration: 42.614 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:36:07 UTC:10.0.0.137(42504):svc_checkout@checkout_db:[25941]:LOG:  duration: 57.877 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:07 UTC:10.0.5.216(30900):svc_checkout@checkout_db:[14010]:LOG:  duration: 63.199 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:07 UTC:10.0.4.204(45404):svc_payment@payment_db:[31566]:LOG:  duration: 61.933 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:08 UTC:10.0.4.52(63922):svc_payment@payment_db:[28742]:LOG:  duration: 68.366 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:08 UTC:10.0.1.175(59308):svc_checkout@checkout_db:[21268]:LOG:  duration: 42.772 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:09 UTC:10.0.3.112(45660):svc_auth@auth_db:[10657]:LOG:  duration: 44.814 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:36:09 UTC:10.0.3.74(47198):svc_payment@payment_db:[25787]:LOG:  duration: 62.593 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:36:09 UTC:10.0.5.56(59164):svc_payment@payment_db:[21013]:LOG:  duration: 43.602 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:10 UTC:10.0.5.54(35641):svc_checkout@checkout_db:[14568]:LOG:  duration: 99.128 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:10 UTC:10.0.5.212(37826):svc_inventory@inventory_db:[19211]:LOG:  duration: 46.774 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:11 UTC:10.0.1.143(37136):svc_payment@payment_db:[23990]:LOG:  duration: 93.718 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:11 UTC:10.0.0.175(34275):svc_payment@payment_db:[19750]:LOG:  duration: 75.245 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:12 UTC:10.0.1.237(52373):svc_checkout@checkout_db:[16170]:LOG:  duration: 114.795 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:12 UTC:10.0.2.186(56548):svc_inventory@inventory_db:[27362]:LOG:  duration: 46.793 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:12 UTC:10.0.3.140(30359):svc_payment@payment_db:[11049]:LOG:  duration: 52.054 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:13 UTC:10.0.1.39(47665):svc_inventory@inventory_db:[30625]:LOG:  duration: 41.779 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:13 UTC:10.0.3.12(46188):svc_payment@payment_db:[13169]:LOG:  duration: 72.428 ms  statement: SELECT status FROM payments WHERE order_id = $1
+2026-09-22 02:36:14 UTC:10.0.4.236(39057):svc_inventory@inventory_db:[23573]:LOG:  duration: 57.014 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:14 UTC:10.0.1.117(61573):svc_checkout@checkout_db:[16070]:ERROR:  deadlock detected
+2026-09-22 02:36:14 UTC:10.0.1.117(62689):svc_checkout@checkout_db:[16070]:STATEMENT:  INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:15 UTC:10.0.5.18(53827):svc_checkout@checkout_db:[16300]:LOG:  duration: 63.400 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:16 UTC:10.0.4.39(36425):svc_payment@payment_db:[15263]:LOG:  duration: 52.567 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:16 UTC:10.0.2.168(36631):svc_payment@payment_db:[14290]:LOG:  duration: 84.027 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:16 UTC:10.0.0.53(39519):svc_checkout@checkout_db:[27519]:LOG:  duration: 49.577 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:16 UTC:10.0.4.167(32246):svc_inventory@inventory_db:[10274]:LOG:  duration: 101.071 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:17 UTC:10.0.4.9(45082):svc_payment@payment_db:[31898]:LOG:  duration: 58.572 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:17 UTC:10.0.1.13(58815):svc_payment@payment_db:[17728]:LOG:  duration: 65.956 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:36:17 UTC:10.0.4.38(38093):svc_payment@payment_db:[25628]:LOG:  duration: 92.255 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:18 UTC:10.0.1.86(52697):svc_checkout@checkout_db:[11946]:LOG:  duration: 117.614 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:19 UTC:10.0.1.24(39691):svc_checkout@checkout_db:[13238]:LOG:  duration: 97.604 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:19 UTC:10.0.3.177(54361):svc_inventory@inventory_db:[11880]:LOG:  duration: 77.136 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:20 UTC:10.0.3.34(61600):svc_payment@payment_db:[31367]:LOG:  duration: 54.643 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:21 UTC:10.0.4.159(57003):svc_payment@payment_db:[30180]:LOG:  duration: 90.180 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:36:21 UTC:10.0.3.164(54472):svc_checkout@checkout_db:[17601]:LOG:  duration: 87.613 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:22 UTC:10.0.3.109(63659):svc_auth@auth_db:[13453]:LOG:  duration: 49.582 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:36:23 UTC:10.0.0.77(44315):svc_checkout@checkout_db:[23006]:LOG:  duration: 75.280 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:24 UTC:10.0.4.183(64136):svc_inventory@inventory_db:[30533]:LOG:  duration: 61.354 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:25 UTC:10.0.2.8(48938):svc_inventory@inventory_db:[17823]:LOG:  duration: 77.381 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:25 UTC:10.0.5.130(50912):svc_checkout@checkout_db:[12293]:LOG:  duration: 77.494 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:26 UTC:10.0.5.247(35460):svc_inventory@inventory_db:[27062]:LOG:  duration: 58.128 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:27 UTC:10.0.1.209(35267):svc_checkout@checkout_db:[13664]:LOG:  duration: 61.622 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:28 UTC:10.0.5.219(40017):svc_inventory@inventory_db:[12012]:LOG:  duration: 46.464 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:28 UTC:10.0.5.35(47524):svc_payment@payment_db:[15483]:LOG:  duration: 158.102 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:29 UTC:10.0.3.9(64783):svc_checkout@checkout_db:[28145]:LOG:  duration: 94.608 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:30 UTC:10.0.5.220(41062):svc_checkout@checkout_db:[30748]:LOG:  duration: 79.204 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:30 UTC:10.0.1.168(55753):svc_payment@payment_db:[26431]:LOG:  duration: 41.157 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:30 UTC:10.0.5.192(43555):svc_checkout@checkout_db:[26102]:LOG:  duration: 105.680 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:30 UTC:10.0.2.170(35573):svc_payment@payment_db:[19248]:LOG:  duration: 62.163 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:36:32 UTC:10.0.3.103(34847):svc_inventory@inventory_db:[21268]:LOG:  duration: 45.714 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:33 UTC:10.0.3.238(60552):svc_payment@payment_db:[16260]:LOG:  duration: 43.729 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:35 UTC:10.0.5.208(42719):svc_inventory@inventory_db:[21217]:LOG:  duration: 44.683 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:35 UTC:10.0.1.151(50190):svc_payment@payment_db:[27122]:LOG:  duration: 42.400 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:36:35 UTC:10.0.1.106(58580):svc_payment@payment_db:[28665]:LOG:  duration: 53.764 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:36 UTC:10.0.0.155(53055):svc_payment@payment_db:[13455]:LOG:  duration: 46.585 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:36:36 UTC:10.0.2.55(35026):svc_payment@payment_db:[24988]:LOG:  duration: 83.833 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:36 UTC:10.0.2.252(47121):svc_payment@payment_db:[20776]:LOG:  duration: 60.439 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:37 UTC:10.0.0.180(53409):svc_checkout@checkout_db:[23958]:LOG:  duration: 82.733 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:37 UTC:10.0.2.185(60625):svc_checkout@checkout_db:[15988]:LOG:  duration: 68.219 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:38 UTC:10.0.1.50(34347):svc_payment@payment_db:[14671]:LOG:  duration: 53.680 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:38 UTC:10.0.1.63(54399):svc_auth@auth_db:[21323]:LOG:  duration: 40.609 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:36:38 UTC:10.0.5.51(56683):svc_payment@payment_db:[21561]:LOG:  duration: 57.546 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:40 UTC:10.0.5.108(43226):svc_inventory@inventory_db:[17523]:LOG:  duration: 52.006 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:40 UTC:10.0.1.157(33925):svc_inventory@inventory_db:[29885]:LOG:  duration: 48.603 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:40 UTC:10.0.5.157(39659):svc_checkout@checkout_db:[10391]:LOG:  duration: 59.278 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:40 UTC:10.0.0.162(32093):svc_checkout@checkout_db:[20213]:LOG:  duration: 47.208 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:41 UTC:10.0.2.92(61753):svc_inventory@inventory_db:[27197]:LOG:  duration: 102.253 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:41 UTC:10.0.0.111(36709):svc_inventory@inventory_db:[19003]:LOG:  duration: 76.764 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:41 UTC:10.0.2.201(42252):svc_payment@payment_db:[12164]:LOG:  duration: 65.956 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:42 UTC:10.0.2.228(41956):svc_payment@payment_db:[22905]:LOG:  duration: 48.555 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:42 UTC:10.0.3.111(39395):svc_inventory@inventory_db:[31799]:LOG:  duration: 41.626 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:42 UTC:10.0.4.16(55011):svc_payment@payment_db:[20430]:LOG:  duration: 120.027 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:43 UTC:10.0.0.124(43974):svc_checkout@checkout_db:[22482]:LOG:  duration: 49.529 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:43 UTC:10.0.0.104(35373):svc_checkout@checkout_db:[11304]:LOG:  duration: 46.701 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:46 UTC:10.0.4.192(60289):svc_inventory@inventory_db:[31377]:LOG:  duration: 72.010 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:48 UTC:10.0.4.18(35056):svc_payment@payment_db:[15272]:LOG:  duration: 100.041 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:48 UTC:10.0.4.174(33719):svc_checkout@checkout_db:[17370]:LOG:  duration: 62.283 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:48 UTC:10.0.2.236(43797):svc_checkout@checkout_db:[30779]:LOG:  duration: 83.959 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:48 UTC:10.0.3.251(38981):svc_payment@payment_db:[18652]:LOG:  duration: 81.678 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:49 UTC:10.0.2.79(34680):svc_payment@payment_db:[18351]:LOG:  duration: 124.702 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:49 UTC:10.0.1.137(38330):svc_payment@payment_db:[22012]:LOG:  duration: 44.443 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:36:49 UTC:10.0.0.68(34811):svc_checkout@checkout_db:[31885]:LOG:  duration: 67.863 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:50 UTC:10.0.5.101(46776):svc_inventory@inventory_db:[27721]:LOG:  duration: 45.217 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:50 UTC:10.0.5.11(37952):svc_payment@payment_db:[17493]:LOG:  duration: 86.996 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:51 UTC:10.0.0.163(37798):svc_payment@payment_db:[20221]:LOG:  duration: 72.867 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:52 UTC:10.0.4.55(32092):svc_inventory@inventory_db:[29376]:LOG:  duration: 45.491 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:36:52 UTC:10.0.1.54(34251):svc_payment@payment_db:[22861]:LOG:  duration: 82.142 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:36:53 UTC:10.0.5.31(64619):svc_checkout@checkout_db:[18620]:LOG:  duration: 82.663 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:53 UTC:10.0.3.120(63216):svc_payment@payment_db:[15216]:LOG:  duration: 51.186 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:53 UTC:10.0.2.103(54482):svc_payment@payment_db:[29529]:LOG:  duration: 98.298 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:54 UTC:10.0.2.176(59972):svc_checkout@checkout_db:[22651]:LOG:  duration: 70.133 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:54 UTC:10.0.5.39(49675):svc_checkout@checkout_db:[13280]:LOG:  duration: 46.000 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:54 UTC:10.0.3.241(43857):svc_checkout@checkout_db:[18007]:LOG:  duration: 90.152 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:54 UTC:10.0.4.124(51629):svc_checkout@checkout_db:[18567]:LOG:  duration: 73.271 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:55 UTC:10.0.4.156(38177):svc_payment@payment_db:[29507]:LOG:  duration: 71.089 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:55 UTC:10.0.1.109(38973):svc_payment@payment_db:[25020]:LOG:  duration: 42.029 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:56 UTC:10.0.3.191(42202):svc_inventory@inventory_db:[12446]:LOG:  duration: 58.613 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:36:58 UTC:10.0.3.73(49402):svc_payment@payment_db:[20153]:LOG:  duration: 102.963 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:58 UTC:10.0.3.215(42342):svc_checkout@checkout_db:[26231]:LOG:  duration: 47.232 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:59 UTC:10.0.5.131(48058):svc_payment@payment_db:[21797]:LOG:  duration: 60.277 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:36:59 UTC:10.0.5.74(30921):svc_checkout@checkout_db:[13690]:LOG:  duration: 109.631 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:00 UTC:10.0.2.138(62566):svc_checkout@checkout_db:[21334]:LOG:  duration: 50.095 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:00 UTC:10.0.4.23(59719):svc_payment@payment_db:[26282]:LOG:  duration: 56.187 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:01 UTC:10.0.5.240(57795):svc_checkout@checkout_db:[27360]:LOG:  duration: 79.223 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:02 UTC:10.0.0.69(34785):svc_auth@auth_db:[15296]:LOG:  duration: 53.564 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:37:02 UTC:10.0.2.224(61009):svc_payment@payment_db:[19008]:LOG:  duration: 57.060 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:03 UTC:10.0.0.162(60197):svc_checkout@checkout_db:[28666]:LOG:  duration: 86.724 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:03 UTC:10.0.2.184(32044):svc_inventory@inventory_db:[26266]:LOG:  duration: 67.049 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:37:04 UTC:10.0.0.124(64404):svc_checkout@checkout_db:[14079]:LOG:  duration: 73.685 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:04 UTC:10.0.5.38(64001):svc_payment@payment_db:[17806]:LOG:  duration: 51.046 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:04 UTC:10.0.0.39(48792):svc_payment@payment_db:[15146]:LOG:  duration: 112.180 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:05 UTC:10.0.4.40(33217):svc_payment@payment_db:[12809]:LOG:  duration: 77.729 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:06 UTC:10.0.4.18(53559):svc_inventory@inventory_db:[30288]:LOG:  duration: 47.226 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:06 UTC:10.0.1.243(49480):svc_checkout@checkout_db:[11772]:LOG:  duration: 41.889 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:08 UTC:10.0.3.65(37368):svc_checkout@checkout_db:[26943]:LOG:  duration: 47.156 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:09 UTC:10.0.3.170(31748):svc_payment@payment_db:[26082]:LOG:  duration: 50.616 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:09 UTC:10.0.4.249(52511):svc_checkout@checkout_db:[12708]:LOG:  duration: 54.637 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:10 UTC:10.0.0.143(59904):svc_checkout@checkout_db:[24610]:LOG:  duration: 53.353 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:11 UTC:10.0.4.26(50472):svc_auth@auth_db:[10460]:LOG:  duration: 40.169 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:37:12 UTC:10.0.3.62(38587):svc_checkout@checkout_db:[12587]:LOG:  duration: 108.625 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:12 UTC:10.0.1.120(62266):svc_checkout@checkout_db:[19705]:LOG:  duration: 101.648 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:12 UTC:10.0.3.242(45573):svc_payment@payment_db:[12425]:LOG:  duration: 43.231 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:13 UTC:10.0.0.121(60859):svc_checkout@checkout_db:[14613]:LOG:  duration: 52.567 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:14 UTC:10.0.4.174(56621):svc_checkout@checkout_db:[20751]:LOG:  duration: 130.194 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:14 UTC:10.0.4.23(52621):svc_inventory@inventory_db:[30020]:LOG:  duration: 77.890 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:14 UTC:10.0.4.82(46541):svc_checkout@checkout_db:[17252]:LOG:  duration: 62.018 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:15 UTC:10.0.1.183(33560):svc_payment@payment_db:[22077]:LOG:  duration: 50.209 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:15 UTC:10.0.2.161(36043):svc_payment@payment_db:[24139]:LOG:  duration: 43.662 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:16 UTC:10.0.4.104(52109):svc_payment@payment_db:[30923]:LOG:  duration: 48.305 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:17 UTC:10.0.5.227(63790):svc_inventory@inventory_db:[19292]:LOG:  duration: 67.130 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:37:18 UTC:10.0.1.173(34568):svc_payment@payment_db:[30127]:LOG:  duration: 63.211 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:18 UTC:10.0.1.227(63740):svc_payment@payment_db:[11293]:LOG:  duration: 108.499 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:19 UTC:10.0.2.219(51476):svc_inventory@inventory_db:[11970]:LOG:  duration: 52.966 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:19 UTC:10.0.4.156(49521):svc_inventory@inventory_db:[12448]:LOG:  duration: 64.182 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:37:21 UTC:10.0.3.93(62444):svc_checkout@checkout_db:[27650]:LOG:  duration: 83.527 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:21 UTC:10.0.3.110(50608):svc_payment@payment_db:[22199]:LOG:  duration: 50.082 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:22 UTC:10.0.4.116(64218):svc_checkout@checkout_db:[31446]:LOG:  duration: 80.121 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:22 UTC:10.0.2.33(49978):svc_checkout@checkout_db:[26180]:LOG:  duration: 49.341 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:22 UTC:10.0.0.198(30623):svc_payment@payment_db:[30387]:LOG:  duration: 270.247 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:23 UTC:10.0.4.70(51032):svc_payment@payment_db:[17321]:LOG:  duration: 66.362 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:24 UTC:10.0.0.235(60162):svc_checkout@checkout_db:[22459]:LOG:  duration: 87.330 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:24 UTC:10.0.2.90(51194):svc_inventory@inventory_db:[25946]:LOG:  duration: 43.961 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:24 UTC:10.0.2.255(36688):svc_inventory@inventory_db:[13955]:LOG:  duration: 43.067 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:37:24 UTC:10.0.5.69(35703):svc_checkout@checkout_db:[21284]:LOG:  duration: 49.057 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:24 UTC:10.0.0.158(46699):svc_inventory@inventory_db:[18518]:LOG:  duration: 44.938 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:37:25 UTC:10.0.2.198(59653):svc_payment@payment_db:[23325]:LOG:  duration: 79.541 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:26 UTC:10.0.0.66(55862):svc_payment@payment_db:[17912]:LOG:  duration: 40.508 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:26 UTC:10.0.0.214(38044):svc_checkout@checkout_db:[31523]:LOG:  duration: 67.572 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:26 UTC:10.0.5.134(35686):svc_payment@payment_db:[20060]:LOG:  duration: 63.775 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:27 UTC:10.0.0.91(41647):svc_payment@payment_db:[14537]:LOG:  duration: 69.987 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:37:27 UTC:10.0.5.77(43213):svc_checkout@checkout_db:[19674]:LOG:  duration: 44.321 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:28 UTC:10.0.4.134(55926):svc_payment@payment_db:[21072]:LOG:  duration: 88.223 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:28 UTC:10.0.0.145(33913):svc_auth@auth_db:[20589]:LOG:  duration: 42.151 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:37:28 UTC:10.0.1.102(58862):svc_checkout@checkout_db:[10866]:LOG:  duration: 57.585 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:29 UTC:10.0.2.67(32128):svc_inventory@inventory_db:[22239]:LOG:  duration: 77.496 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:29 UTC:10.0.2.133(52892):svc_payment@payment_db:[26301]:LOG:  duration: 42.010 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:37:30 UTC:10.0.2.237(35119):svc_inventory@inventory_db:[21350]:LOG:  duration: 42.411 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:30 UTC:10.0.0.113(53354):svc_payment@payment_db:[10009]:LOG:  duration: 83.074 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:31 UTC:10.0.1.141(57049):svc_checkout@checkout_db:[14606]:LOG:  duration: 66.291 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:32 UTC:10.0.4.55(32001):svc_checkout@checkout_db:[24683]:LOG:  duration: 43.947 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:32 UTC:10.0.3.174(53318):svc_payment@payment_db:[15622]:LOG:  duration: 84.682 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:33 UTC:10.0.1.133(32335):svc_checkout@checkout_db:[28688]:LOG:  duration: 70.757 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:33 UTC:10.0.3.40(47967):svc_checkout@checkout_db:[18072]:LOG:  duration: 105.637 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:34 UTC:10.0.5.22(63231):svc_payment@payment_db:[22540]:LOG:  duration: 78.727 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:34 UTC:10.0.4.22(37015):svc_checkout@checkout_db:[21252]:LOG:  duration: 59.046 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:35 UTC:10.0.1.177(31322):svc_checkout@checkout_db:[23160]:LOG:  duration: 90.988 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:35 UTC:10.0.5.31(32394):svc_checkout@checkout_db:[22151]:LOG:  duration: 54.759 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:35 UTC:10.0.3.53(42906):svc_checkout@checkout_db:[21895]:LOG:  duration: 49.998 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:36 UTC:10.0.0.25(37526):svc_auth@auth_db:[24291]:LOG:  duration: 40.704 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:37:37 UTC:10.0.3.60(49097):svc_checkout@checkout_db:[17309]:LOG:  duration: 64.145 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:37 UTC:10.0.4.241(41357):svc_checkout@checkout_db:[22326]:LOG:  duration: 98.222 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:37 UTC:10.0.5.66(48043):svc_checkout@checkout_db:[25229]:LOG:  duration: 160.802 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:38 UTC:10.0.4.136(37769):svc_checkout@checkout_db:[25983]:LOG:  duration: 56.328 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:39 UTC:10.0.0.105(30944):svc_payment@payment_db:[14341]:LOG:  duration: 40.011 ms  statement: UPDATE payments SET status = 'refunded' WHERE id = $1
+2026-09-22 02:37:39 UTC:10.0.1.145(37529):svc_checkout@checkout_db:[16049]:LOG:  duration: 104.322 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:39 UTC:10.0.5.73(53541):svc_inventory@inventory_db:[11015]:LOG:  duration: 41.026 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:37:40 UTC:10.0.5.41(61091):svc_inventory@inventory_db:[16160]:LOG:  duration: 40.298 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:37:40 UTC:10.0.4.51(48277):svc_checkout@checkout_db:[16421]:LOG:  duration: 90.459 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:40 UTC:10.0.2.247(57724):svc_inventory@inventory_db:[12746]:LOG:  duration: 42.457 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:41 UTC:10.0.1.31(31127):svc_checkout@checkout_db:[14634]:LOG:  duration: 147.718 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:41 UTC:10.0.1.219(48619):svc_payment@payment_db:[13622]:LOG:  duration: 59.130 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:41 UTC:10.0.3.50(43274):svc_checkout@checkout_db:[21165]:LOG:  duration: 45.609 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:42 UTC:10.0.5.40(46855):svc_checkout@checkout_db:[14671]:LOG:  duration: 565.615 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:43 UTC:10.0.3.176(34884):svc_checkout@checkout_db:[18024]:LOG:  duration: 67.718 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:43 UTC:10.0.4.192(63849):svc_payment@payment_db:[24011]:LOG:  duration: 64.727 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:43 UTC:10.0.3.101(52461):svc_checkout@checkout_db:[24858]:LOG:  duration: 73.064 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:43 UTC:10.0.3.42(56713):svc_checkout@checkout_db:[29238]:LOG:  duration: 48.946 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:44 UTC:10.0.1.162(50916):svc_checkout@checkout_db:[15742]:LOG:  duration: 43.111 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:44 UTC:10.0.3.116(32348):svc_payment@payment_db:[14474]:LOG:  duration: 84.895 ms  statement: SELECT status FROM payments WHERE order_id = $1
+2026-09-22 02:37:44 UTC:10.0.1.5(33553):svc_checkout@checkout_db:[16160]:LOG:  duration: 83.897 ms  statement: INSERT INTO orders (id, user_id, total_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:47 UTC:10.0.5.246(58641):svc_inventory@inventory_db:[21424]:LOG:  duration: 66.424 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:47 UTC:10.0.0.83(31357):svc_auth@auth_db:[29775]:LOG:  duration: 40.481 ms  statement: SELECT id, password_hash FROM users WHERE email = $1
+2026-09-22 02:37:48 UTC:10.0.2.20(30937):svc_inventory@inventory_db:[16290]:LOG:  duration: 80.180 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:48 UTC:10.0.5.137(34297):svc_payment@payment_db:[18806]:LOG:  duration: 66.738 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:48 UTC:10.0.3.32(43272):svc_inventory@inventory_db:[27496]:LOG:  duration: 49.547 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:48 UTC:10.0.5.59(62139):svc_payment@payment_db:[28073]:LOG:  duration: 41.260 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:49 UTC:10.0.5.245(33964):svc_inventory@inventory_db:[21917]:LOG:  duration: 47.525 ms  statement: SELECT quantity FROM inventory WHERE sku = $1
+2026-09-22 02:37:49 UTC:10.0.5.96(64196):svc_payment@payment_db:[12146]:LOG:  duration: 52.121 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
+2026-09-22 02:37:50 UTC:10.0.1.129(39704):svc_inventory@inventory_db:[22125]:LOG:  duration: 89.827 ms  statement: UPDATE inventory SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1
+2026-09-22 02:37:51 UTC:10.0.5.40(47230):svc_payment@payment_db:[19537]:LOG:  duration: 82.235 ms  statement: INSERT INTO payments (id, order_id, amount_cents, status) VALUES ($1, $2, $3, $4)
