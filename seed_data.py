@@ -1,421 +1,128 @@
+"""
+setup_db.py
 
+Run this once (or any time you want to recreate the schema from scratch)
+to create every table console.py depends on: services, application_logs,
+incidents - plus the indexes and constraints that console.py's queries
+actually rely on (the partial unique index that makes duplicate-incident
+prevention work, and the confidence check constraint).
+
+Safe to re-run: everything uses IF NOT EXISTS, so running this against a
+database that already has these tables just does nothing extra.
+
+Setup:
+    pip install psycopg2-binary python-dotenv
+    Same .env as console.py: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+    (or a single DATABASE_URL)
+
+Run:
+    python setup_db.py
+"""
+
+import os
 import psycopg2
-import random
-import uuid
+from dotenv import load_dotenv
 
-from datetime import datetime, timedelta
+SCHEMA_SQL = """
+-- Needed for the incidents.embedding column (used later once you wire up
+-- retrieval - harmless to have now even if nothing writes to it yet).
+CREATE EXTENSION IF NOT EXISTS vector;
 
+CREATE TABLE IF NOT EXISTS services (
+    id           SERIAL PRIMARY KEY,
+    name         VARCHAR(100) NOT NULL UNIQUE,
+    environment  VARCHAR(50)  NOT NULL DEFAULT 'production'
+);
 
-# ==========================================
-# DATABASE CONFIGURATION
-# ==========================================
+CREATE TABLE IF NOT EXISTS application_logs (
+    id          SERIAL PRIMARY KEY,
+    service_id  INTEGER NOT NULL REFERENCES services(id),
+    level       VARCHAR(20) NOT NULL,
+    message     TEXT NOT NULL,
+    latency_ms  REAL,
+    request_id  VARCHAR(64),
+    timestamp   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
+);
 
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "database": "ai_incident",
-    "user": "postgres",
-    "password": "Login@100"
-}
+-- console.py's bucket queries filter by service_id + timestamp range on
+-- every check - this index is what keeps that fast as the table grows.
+CREATE INDEX IF NOT EXISTS idx_application_logs_service_timestamp
+    ON application_logs (service_id, timestamp);
 
+CREATE TABLE IF NOT EXISTS incidents (
+    id                      SERIAL PRIMARY KEY,
+    service_id              INTEGER NOT NULL REFERENCES services(id),
+    rule                    VARCHAR(30),
+    fingerprint             VARCHAR(64),
+    title                   VARCHAR(255) NOT NULL,
+    description             TEXT,
+    severity                VARCHAR(20) NOT NULL DEFAULT 'medium',
+    status                  VARCHAR(20) NOT NULL DEFAULT 'open',
+    started_at              TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+    resolved_at             TIMESTAMP WITHOUT TIME ZONE,
+    created_at              TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+    root_cause              TEXT,
+    resolution              TEXT,
+    resolution_confidence   VARCHAR(20),
+    embedding               vector(1536),
 
-# ==========================================
-# FAKE SERVICES
-# ==========================================
+    CONSTRAINT incidents_resolution_confidence_check
+        CHECK (resolution_confidence IS NULL
+               OR resolution_confidence IN ('confirmed', 'inferred', 'unknown'))
+);
 
-SERVICES = [
-    ("rag-api", "production"),
-    ("vector-db", "production"),
-    ("llm-service", "production"),
-    ("payment-service", "production"),
-    ("auth-service", "production"),
-]
+-- This is what makes "ON CONFLICT (service_id, fingerprint) WHERE status =
+-- 'open' DO NOTHING" in console.py actually work - a normal unique
+-- constraint can't be scoped to only open incidents, a partial unique
+-- index can. Without this exact index, try_open_incident() will error.
+CREATE UNIQUE INDEX IF NOT EXISTS incidents_open_service_fingerprint_idx
+    ON incidents (service_id, fingerprint)
+    WHERE status = 'open';
 
-
-# ==========================================
-# LOG MESSAGE TEMPLATES
-# ==========================================
-
-LOG_TEMPLATES = {
-
-    "rag-api": {
-        "INFO": [
-            "RAG request completed successfully",
-            "User query processed",
-            "Response generated successfully",
-        ],
-        "WARNING": [
-            "RAG request latency above threshold",
-            "Slow document retrieval detected",
-        ],
-        "ERROR": [
-            "Vector database timeout",
-            "Failed to retrieve documents",
-            "RAG pipeline request failed",
-        ],
-    },
-
-    "vector-db": {
-        "INFO": [
-            "Vector search completed",
-            "Embedding query processed",
-        ],
-        "WARNING": [
-            "Vector search latency above threshold",
-            "High vector database CPU usage",
-        ],
-        "ERROR": [
-            "Vector database connection timeout",
-            "Vector search failed",
-        ],
-    },
-
-    "llm-service": {
-        "INFO": [
-            "LLM response generated",
-            "LLM request completed",
-        ],
-        "WARNING": [
-            "LLM response latency high",
-            "Token usage above expected limit",
-        ],
-        "ERROR": [
-            "LLM request timeout",
-            "LLM provider API error",
-            "Failed to generate response",
-        ],
-    },
-
-    "payment-service": {
-        "INFO": [
-            "Payment completed successfully",
-            "Payment request processed",
-        ],
-        "WARNING": [
-            "Payment gateway response slow",
-        ],
-        "ERROR": [
-            "Payment gateway timeout",
-            "Payment processing failed",
-        ],
-    },
-
-    "auth-service": {
-        "INFO": [
-            "User authenticated successfully",
-            "Token validated",
-        ],
-        "WARNING": [
-            "Authentication latency above threshold",
-        ],
-        "ERROR": [
-            "Authentication service unavailable",
-            "Token validation failed",
-        ],
-    },
-}
+CREATE INDEX IF NOT EXISTS idx_incidents_status
+    ON incidents (status);
+"""
 
 
-# ==========================================
-# INCIDENT TEMPLATES
-# ==========================================
-
-INCIDENT_TEMPLATES = [
-    (
-        "RAG chatbot latency increased",
-        "High latency observed in RAG API requests.",
-        "high",
-        "open",
-        "rag-api"
-    ),
-
-    (
-        "Vector database timeout spike",
-        "Vector search requests are timing out.",
-        "critical",
-        "investigating",
-        "vector-db"
-    ),
-
-    (
-        "LLM response latency increased",
-        "LLM responses are taking longer than usual.",
-        "high",
-        "open",
-        "llm-service"
-    ),
-
-    (
-        "Payment gateway failures",
-        "Multiple payment requests failed.",
-        "critical",
-        "investigating",
-        "payment-service"
-    ),
-
-    (
-        "Authentication failures",
-        "Users are experiencing authentication failures.",
-        "medium",
-        "resolved",
-        "auth-service"
-    ),
-
-    (
-        "RAG document retrieval failures",
-        "Some RAG requests failed during document retrieval.",
-        "high",
-        "open",
-        "rag-api"
-    ),
-
-    (
-        "LLM provider timeout",
-        "LLM provider requests are timing out.",
-        "critical",
-        "resolved",
-        "llm-service"
-    ),
-
-    (
-        "Payment processing latency",
-        "Payment processing is slower than expected.",
-        "medium",
-        "open",
-        "payment-service"
-    ),
-
-    (
-        "Vector search performance degradation",
-        "Vector search latency increased significantly.",
-        "high",
-        "investigating",
-        "vector-db"
-    ),
-
-    (
-        "Authentication service instability",
-        "Authentication service returned intermittent errors.",
-        "high",
-        "resolved",
-        "auth-service"
-    ),
-]
-
-
-# ==========================================
-# DATABASE CONNECTION
-# ==========================================
-
-def get_connection():
-
-    return psycopg2.connect(**DB_CONFIG)
-
-
-# ==========================================
-# INSERT SERVICES
-# ==========================================
-
-def insert_services(cursor):
-
-    query = """
-        INSERT INTO services (name, environment)
-        VALUES (%s, %s)
-        ON CONFLICT (name) DO NOTHING
-        RETURNING id, name;
-    """
-
-    cursor.executemany(
-        """
-        INSERT INTO services (name, environment)
-        VALUES (%s, %s)
-        ON CONFLICT (name) DO NOTHING;
-        """,
-        SERVICES
-    )
-
-    print("Services inserted successfully")
-
-
-# ==========================================
-# FETCH SERVICE IDS
-# ==========================================
-
-def get_service_ids(cursor):
-
-    cursor.execute("""
-        SELECT id, name
-        FROM services;
-    """)
-
-    rows = cursor.fetchall()
-
+def load_db_config():
+    load_dotenv()
+    if os.getenv("DATABASE_URL"):
+        return {"dsn": os.environ["DATABASE_URL"]}
     return {
-        name: service_id
-        for service_id, name in rows
+        "dsn": None,
+        "host": os.getenv("DB_HOST", "localhost"),
+        "port": os.getenv("DB_PORT", "5432"),
+        "dbname": os.getenv("DB_NAME", "incident_copilot"),
+        "user": os.getenv("DB_USER", "postgres"),
+        "password": os.getenv("DB_PASSWORD", ""),
     }
 
 
-# ==========================================
-# INSERT INCIDENTS
-# ==========================================
+def connect():
+    cfg = load_db_config()
+    if cfg.get("dsn"):
+        return psycopg2.connect(cfg["dsn"])
+    return psycopg2.connect(
+        host=cfg["host"], port=cfg["port"], dbname=cfg["dbname"],
+        user=cfg["user"], password=cfg["password"],
+    )
 
-def insert_incidents(cursor, service_ids):
-
-    query = """
-        INSERT INTO incidents (
-            service_id,
-            title,
-            description,
-            severity,
-            status,
-            started_at,
-            resolved_at
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s);
-    """
-
-    now = datetime.now()
-
-    incidents = []
-
-    for title, description, severity, status, service in INCIDENT_TEMPLATES:
-
-        started_at = now - timedelta(
-            hours=random.randint(1, 72)
-        )
-
-        resolved_at = None
-
-        if status == "resolved":
-            resolved_at = started_at + timedelta(
-                minutes=random.randint(15, 180)
-            )
-
-        incidents.append((
-            service_ids[service],
-            title,
-            description,
-            severity,
-            status,
-            started_at,
-            resolved_at
-        ))
-
-    cursor.executemany(query, incidents)
-
-    print("Incidents inserted successfully")
-
-
-# ==========================================
-# INSERT APPLICATION LOGS
-# ==========================================
-
-def insert_logs(cursor, service_ids):
-
-    query = """
-        INSERT INTO application_logs (
-            service_id,
-            level,
-            message,
-            latency_ms,
-            request_id,
-            timestamp
-        )
-        VALUES (%s, %s, %s, %s, %s, %s);
-    """
-
-    logs = []
-
-    now = datetime.now()
-
-    service_names = list(LOG_TEMPLATES.keys())
-
-    for _ in range(100):
-
-        service = random.choice(service_names)
-
-        # Mostly INFO logs, fewer errors
-        level = random.choices(
-            ["INFO", "WARNING", "ERROR"],
-            weights=[70, 20, 10]
-        )[0]
-
-        message = random.choice(
-            LOG_TEMPLATES[service][level]
-        )
-
-        # Generate realistic latency
-        if level == "ERROR":
-            latency_ms = random.randint(5000, 20000)
-
-        elif level == "WARNING":
-            latency_ms = random.randint(2000, 8000)
-
-        else:
-            latency_ms = random.randint(100, 2500)
-
-        timestamp = now - timedelta(
-            minutes=random.randint(0, 1440)
-        )
-
-        logs.append((
-            service_ids[service],
-            level,
-            message,
-            latency_ms,
-            str(uuid.uuid4()),
-            timestamp
-        ))
-
-    cursor.executemany(query, logs)
-
-    print("100 application logs inserted successfully")
-
-
-# ==========================================
-# MAIN FUNCTION
-# ==========================================
 
 def main():
-
-    connection = None
-
+    print("[setup_db] connecting...")
+    conn = connect()
     try:
-
-        connection = get_connection()
-
-        cursor = connection.cursor()
-
-        print("Connected to PostgreSQL")
-
-        insert_services(cursor)
-
-        service_ids = get_service_ids(cursor)
-
-        insert_incidents(cursor, service_ids)
-
-        insert_logs(cursor, service_ids)
-
-        connection.commit()
-
-        print("\nAll fake data inserted successfully!")
-
+        with conn.cursor() as cur:
+            cur.execute(SCHEMA_SQL)
+        conn.commit()
+        print("[setup_db] done - services, application_logs, incidents are ready.")
     except Exception as e:
-
-        if connection:
-            connection.rollback()
-
-        print("Error:", e)
-
+        conn.rollback()
+        print(f"[setup_db] failed: {e}")
+        raise
     finally:
-
-        if connection:
-            connection.close()
-
-            print("Database connection closed")
+        conn.close()
 
 
 if __name__ == "__main__":
-
     main()
