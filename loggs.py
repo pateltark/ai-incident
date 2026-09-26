@@ -8,11 +8,17 @@ runs the same detection rules and fingerprinting logic we built earlier
 against that data - so you see, right away, whether it opened an
 incident.
 
-This trades the "realistic pipeline" simulation (separate log files,
-tailing, polling) for direct control: nothing happens unless you trigger
-it. Good for hands-on testing and demos where you want to drive exactly
-what happens and see the result instantly, rather than waiting for a
-generator + ingestor + detector loop.
+This version adds the CLOSE side: a manual `resolve` command (you type
+the root cause / fix, it saves them and closes the row) and an
+`autoclose` command that checks every open incident's condition and
+closes the ones that have gone quiet - the same "did the signal stop"
+logic your V4 resolution watcher will eventually run on a schedule.
+
+No embedding step yet - this just asks a human for the root cause and
+resolution and saves them as plain text on the incident, so the data is
+there and ready. Once you've got an embedding function you trust (reuse
+whatever you used in your RAG project), that's a small add-on later:
+embed the closing text and fill in the `embedding` column at that point.
 
 Setup:
     pip install psycopg2-binary python-dotenv
@@ -84,6 +90,13 @@ LATENCY_SPIKE_CONSEC_MINUTES = 3
 
 SEVERITY_BY_RULE = {"error_rate": "high", "new_error_type": "medium", "latency_spike": "medium"}
 
+# --- resolution / closing thresholds -----------------------------------
+# How long a condition has to stay quiet before we consider an incident
+# resolved. Same idea as a "flap" window in real incident tooling - short
+# enough that you're not waiting forever in a demo, long enough that one
+# quiet minute doesn't falsely close something that's still flapping.
+RESOLVE_COOLDOWN_MINUTES = 10
+
 
 # ---------------------------------------------------------------------------
 # DB
@@ -106,11 +119,13 @@ def load_db_config():
 def connect():
     cfg = load_db_config()
     if cfg.get("dsn"):
-        return psycopg2.connect(cfg["dsn"])
-    return psycopg2.connect(
-        host=cfg["host"], port=cfg["port"], dbname=cfg["dbname"],
-        user=cfg["user"], password=cfg["password"],
-    )
+        conn = psycopg2.connect(cfg["dsn"])
+    else:
+        conn = psycopg2.connect(
+            host=cfg["host"], port=cfg["port"], dbname=cfg["dbname"],
+            user=cfg["user"], password=cfg["password"],
+        )
+    return conn
 
 
 KNOWN_SERVICES = ["checkout", "payment", "auth", "inventory"]
@@ -346,6 +361,122 @@ def check_all(conn):
 
 
 # ---------------------------------------------------------------------------
+# Resolving / closing - the new part
+# ---------------------------------------------------------------------------
+
+CLOSE_INCIDENT_SQL = """
+    UPDATE incidents
+    SET status = 'resolved',
+        resolved_at = now(),
+        root_cause = %s,
+        resolution = %s,
+        resolution_confidence = %s
+    WHERE id = %s AND status = 'open'
+    RETURNING id, title;
+"""
+
+
+def close_incident(conn, incident_id, root_cause, resolution=None, confidence="confirmed"):
+    with conn.cursor() as cur:
+        cur.execute(CLOSE_INCIDENT_SQL, (root_cause, resolution, confidence, incident_id))
+        result = cur.fetchone()
+    conn.commit()
+    if result is None:
+        print(f"  incident {incident_id} isn't open (already resolved, or doesn't exist)")
+        return False
+    print(f"  >>> INCIDENT RESOLVED  id={result[0]}  \"{result[1]}\"")
+    print("      root cause and resolution saved - embedding can be added later once you wire that up")
+    return True
+
+
+def fetch_open_incidents(conn):
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT id, service_id, rule, fingerprint, started_at
+            FROM incidents WHERE status = 'open' ORDER BY started_at;
+        """)
+        return cur.fetchall()
+
+
+def is_condition_quiet(conn, service_id, rule, fp, cooldown_minutes):
+    """
+    Checks whether the condition that opened this incident has stopped
+    happening for at least `cooldown_minutes`. Rule-specific because each
+    rule type means something different by "quiet":
+      - error_rate:     recent error rate has dropped back under the floor
+      - new_error_type: that exact fingerprint hasn't shown up in the window
+      - latency_spike:  recent p95 has dropped back under the spike threshold
+    """
+    if rule == "error_rate":
+        buckets = fetch_error_rate_buckets(conn, service_id)
+        recent = [b for b in buckets if b[0] >= datetime.datetime.now(datetime.timezone.utc)
+                  - datetime.timedelta(minutes=cooldown_minutes)]
+        if not recent:
+            return False  # no data at all in the window - don't guess, stay open
+        rates = [ec / tc for _, tc, ec in recent if tc > 0]
+        return bool(rates) and all(r < ERROR_RATE_FLOOR for r in rates)
+
+    if rule == "new_error_type":
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT message FROM application_logs
+                WHERE service_id = %s AND level = 'ERROR'
+                  AND timestamp >= now() - (%s * interval '1 minute');
+                """,
+                (service_id, cooldown_minutes),
+            )
+            recent_messages = [r[0] for r in cur.fetchall()]
+        return fp not in {fingerprint(m) for m in recent_messages}
+
+    if rule == "latency_spike":
+        buckets = fetch_latency_buckets(conn, service_id)
+        recent = [b for b in buckets if b[0] >= datetime.datetime.now(datetime.timezone.utc)
+                  - datetime.timedelta(minutes=cooldown_minutes)]
+        if not recent:
+            return False
+        baseline_pool = buckets[:-len(recent)] if len(buckets) > len(recent) else []
+        if not baseline_pool:
+            return False
+        baseline_median = statistics.median(p95 for _, p95 in baseline_pool if p95 is not None)
+        if baseline_median <= 0:
+            return False
+        return all(p95 is not None and p95 < LATENCY_SPIKE_MULT * baseline_median for _, p95 in recent)
+
+    # unknown rule type - don't auto-close something we don't understand
+    return False
+
+
+def autoclose(conn, cooldown_minutes=RESOLVE_COOLDOWN_MINUTES):
+    open_incidents = fetch_open_incidents(conn)
+    if not open_incidents:
+        print("  (no open incidents)")
+        return
+    closed_any = False
+    for incident_id, service_id, rule, fp, started_at in open_incidents:
+        quiet = is_condition_quiet(conn, service_id, rule, fp, cooldown_minutes)
+        if not quiet:
+            print(f"  incident {incident_id} ({rule}): still active, leaving open")
+            continue
+        # No investigation agent wired up yet in this console, so if nobody
+        # has filled in root_cause/resolution (e.g. via `resolve`), close with
+        # a clear placeholder rather than silently leaving those columns null.
+        with conn.cursor() as cur:
+            cur.execute("SELECT root_cause, resolution FROM incidents WHERE id = %s;", (incident_id,))
+            existing_root_cause, existing_resolution = cur.fetchone()
+        root_cause = existing_root_cause or "(auto-closed: condition cleared, no investigation recorded)"
+        resolution = existing_resolution or "(condition stopped firing before a fix was recorded)"
+        # No human confirmed this closure, and there's no agent hypothesis to
+        # fall back on either at this stage - 'unknown' is the honest label
+        # matching the schema's vocabulary (confirmed/inferred/unknown).
+        confidence = "unknown" if not existing_root_cause else "inferred"
+        if close_incident(conn, incident_id, root_cause, resolution, confidence):
+            closed_any = True
+    if not closed_any:
+        print("  nothing closed this pass")
+
+
+# ---------------------------------------------------------------------------
 # Interactive console
 # ---------------------------------------------------------------------------
 
@@ -359,6 +490,10 @@ Commands:
   latency <service> <ms>              write one INFO log with a custom latency_ms, then check
   check [service]                     manually run detection (all services, or just one)
   incidents                           list all incidents
+  resolve <id>                        manually close an incident - asks you for the root cause,
+                                       then sets status=resolved
+  autoclose [minutes]                 check every open incident's condition; close the ones that
+                                       have been quiet for at least [minutes] (default 10)
   logs <service> [n]                  show the last n logs for a service (default 10)
   services                            list known services
   fp <message...>                     show what fingerprint a message normalizes/hashes to
@@ -373,6 +508,9 @@ Examples:
   latency inventory 900
   check
   incidents
+  resolve 3
+  autoclose
+  autoclose 5
 """
 
 
@@ -390,6 +528,26 @@ def cmd_incidents(conn):
     print(f"  {'id':<4} {'service':<10} {'rule':<16} {'fingerprint':<14} {'status':<10} {'severity':<8} started_at")
     for r in rows:
         print(f"  {r[0]:<4} {r[1]:<10} {r[2] or '-':<16} {r[3] or '-':<14} {r[4]:<10} {r[5]:<8} {r[6]}")
+
+
+def cmd_resolve(conn, incident_id):
+    with conn.cursor() as cur:
+        cur.execute("SELECT status, title FROM incidents WHERE id = %s;", (incident_id,))
+        row = cur.fetchone()
+    if row is None:
+        print(f"  no incident with id {incident_id}")
+        return
+    status, title = row
+    if status != "open":
+        print(f"  incident {incident_id} is already '{status}', nothing to resolve")
+        return
+
+    print(f"  resolving incident {incident_id}: \"{title}\"")
+    root_cause = input("  root cause: ").strip()
+    if not root_cause:
+        print("  root cause is required - aborted")
+        return
+    close_incident(conn, incident_id, root_cause)
 
 
 def cmd_logs(conn, service_name, n=10):
@@ -485,6 +643,16 @@ def repl():
 
             elif cmd == "incidents":
                 cmd_incidents(conn)
+
+            elif cmd == "resolve":
+                if not rest:
+                    print("  usage: resolve <id>")
+                    continue
+                cmd_resolve(conn, int(rest[0]))
+
+            elif cmd == "autoclose":
+                minutes = int(rest[0]) if rest else RESOLVE_COOLDOWN_MINUTES
+                autoclose(conn, minutes)
 
             elif cmd == "logs":
                 if not rest:
