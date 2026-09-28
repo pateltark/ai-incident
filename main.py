@@ -11,13 +11,22 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
-class IncidentState(TypedDict):
-    user_question: str
-    service_name: str | None
+class InvestigationState(TypedDict):
+   
+    alert: dict 
     logs: List[Dict[str, Any]]
     incidents: List[Dict[str, Any]]
     slow_requests: List[Dict[str, Any]]
     analysis: str | None
+
+
+class Alert(BaseModel):
+    incident_id: int
+    service: str
+    rule: str                 # error_rate | new_error_type | latency_spike
+    fingerprint: str
+
+    error_rate: Optional[float] = None
 
 
 
@@ -224,11 +233,6 @@ def analyst_llm(state: IncidentState) -> Dict[str, Any]:
             else slow).append(err)
 
     return {"logs": logs, "incidents": incidents, "slow_requests": slow}
-
-
-
-
-
 
 
 
