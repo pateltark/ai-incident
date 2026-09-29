@@ -291,18 +291,48 @@ OPEN_INCIDENT_SQL = """
 """
 
 
+# Add a global callback list or trigger function
+INCIDENT_OPENED_CALLBACKS = []
+
+def register_on_incident_opened(callback):
+    """Register a listener/agent runner when an incident opens."""
+    INCIDENT_OPENED_CALLBACKS.append(callback)
+
+
 def try_open_incident(conn, service_id, service_name, rule, fp, title, description):
     severity = SEVERITY_BY_RULE.get(rule, "medium")
     with conn.cursor() as cur:
         cur.execute(OPEN_INCIDENT_SQL, (service_id, rule, fp, title, description, severity))
         row = cur.fetchone()
     conn.commit()
+    
     if row is None:
         print(f"  (already open: an incident for {service_name}/{fp} exists - no duplicate)")
         return None
-    print(f"  >>> INCIDENT OPENED  id={row[0]}  rule={rule}  severity={severity}  fingerprint={fp}")
+    
+    incident_id = row[0]
+    print(f"  >>> INCIDENT OPENED  id={incident_id}  rule={rule}  severity={severity}  fingerprint={fp}")
     print(f"      {description}")
-    return row[0]
+
+    # Build alert payload
+    alert_payload = {
+        "incident_id": incident_id,
+        "service_name": service_name,
+        "rule": rule,
+        "fingerprint": fp,
+        "title": title,
+        "description": description,
+        "severity": severity
+    }
+
+    # Automatically notify agents in-memory without relying on DB status updates
+    for callback in INCIDENT_OPENED_CALLBACKS:
+        try:
+            callback(alert_payload)
+        except Exception as e:
+            print(f"Error triggering callback for incident {incident_id}: {e}")
+
+    return incident_id
 
 
 def check_service(conn, service_id, service_name, quiet_if_nothing=True):

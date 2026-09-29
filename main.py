@@ -23,9 +23,8 @@ class InvestigationState(TypedDict):
 class Alert(BaseModel):
     incident_id: int
     service: str
-    rule: str                 # error_rate | new_error_type | latency_spike
+    rule: str                 
     fingerprint: str
-
     error_rate: Optional[float] = None
 
 
@@ -272,6 +271,28 @@ graph.add_edge("llm_analyst_node", END)
 
 app = graph.compile()
 
+
+
+def handle_incident_opened_event(alert_data: Dict[str, Any]):
+    """Automatically triggered in-memory when an incident opens."""
+    print(f"\n[Agent Triggered] Investigating new incident ID {alert_data['incident_id']} on service '{alert_data['service_name']}'...")
+    
+    # Construct state directly from the event
+    initial_state: IncidentState = {
+        "user_question": f"Investigate active incident #{alert_data['incident_id']} for service '{alert_data['service_name']}'. Rule triggered: {alert_data['rule']}. Description: {alert_data['description']}",
+        "service_name": alert_data["service_name"],
+        "alert": alert_data,
+        "logs": [],
+        "incidents": [],
+        "slow_requests": [],
+        "analysis": None
+    }
+
+    # Execute LangGraph investigation automatically
+    final_state = app.invoke(initial_state)
+    print("\n--- [AUTOMATED AGENT REPORT] ---")
+    print(final_state.get("analysis"))
+    print("----------------------------------\n")
 
 
 initial_state: IncidentState = {

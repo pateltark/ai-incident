@@ -49,10 +49,6 @@ def query_slow_requests_tool(
 # Tool definitions for LLM
 # -----------------------------
 
-# -----------------------------
-# Tool definitions for LLM
-# -----------------------------
-
 TOOLS = [
     {
         "type": "function",
