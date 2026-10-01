@@ -6,9 +6,8 @@ from groq import Groq
 from dotenv import load_dotenv
 import os
 import json
-from datetime import datetime
-
-from db import find_windows, get_window_stats, group_errors, collect_error_rate_evidence
+from datetime import datetime, timedelta, timezone
+from db import find_windows, get_window_stats, group_errors, collect_error_rate_evidence, _row, _fmt, get_trigger_logs, get_warns_before, get_trace, fetch_new_error_type
 
 load_dotenv()
 
@@ -55,17 +54,30 @@ def find_error_logs(state: InvestigationState):
 
 
 
-started_at_dt = datetime.fromisoformat("2026-10-01 07:08:37.884965")
+# started_at_dt = datetime.fromisoformat("2026-10-01 07:08:37.884965")
 
-res_logs = collect_error_rate_evidence(
-    service_name="checkout", 
-    started_at=started_at_dt, 
-    resolved_at=None, 
-    top_n=10
-)
+# res_logs = collect_error_rate_evidence(
+#     service_name="checkout", 
+#     started_at=started_at_dt, 
+#     resolved_at=None, 
+#     top_n=10
+# )
 
-error_rate = res_logs
-print(error_rate)
+
+# trigger = get_trigger_logs(logs, incident["service"], incident["fingerprint"], now)
+# warns = get_warns_before(logs, incident["service"], trigger["first_seen"])
+# trace = get_trace(logs, trigger["samples"])
+
+
+incident = {
+    "incident_id": 4,
+    "service": "auth",
+    "rule": "new_error_type",
+    "fingerprint": "0125740d755e",
+}
+
+print(fetch_new_error_type(incident))
+
 
 
 
