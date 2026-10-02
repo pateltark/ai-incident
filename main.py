@@ -7,7 +7,9 @@ from dotenv import load_dotenv
 import os
 import json
 from datetime import datetime, timedelta, timezone
-from db import find_windows, get_window_stats, group_errors, collect_error_rate_evidence, _row, _fmt, get_trigger_logs, get_warns_before, get_trace, fetch_new_error_type
+from db import find_windows, get_window_stats, group_errors, collect_error_rate_evidence, fetch_latency_spike, _row, _fmt, get_trigger_logs, get_warns_before, get_trace, fetch_new_error_type
+from pprint import pprint
+
 
 load_dotenv()
 
@@ -69,17 +71,25 @@ def find_error_logs(state: InvestigationState):
 # trace = get_trace(logs, trigger["samples"])
 
 
-incident = {
-    "incident_id": 4,
-    "service": "auth",
-    "rule": "new_error_type",
-    "fingerprint": "0125740d755e",
-}
+# incident = {
+#     "incident_id": 3,
+#     "service": "auth",
+#     "rule": "new_error_type",
+#     "fingerprint": "0125740d755e",
+# }
 
-print(fetch_new_error_type(incident))
+# print(fetch_new_error_type(incident))
 
 
 
+
+
+pprint(fetch_latency_spike({
+    "incident_id": 3,            # your latency_spike incident id
+    "service": "inventory",
+    "rule": "latency_spike",
+    "fingerprint": "638a3fefe1fc",           # not used by this rule
+}))
 
 # tools = [
 #     query_logs_tool,
