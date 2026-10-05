@@ -1,343 +1,139 @@
-from typing import TypedDict, List, Dict, Any, Optional
+from typing import Optional, Dict, Any
 from langgraph.graph import StateGraph, END
-from tools import TOOLS, query_logs_tool, find_incident_tool, query_slow_requests_tool
 from pydantic import BaseModel
 from groq import Groq
 from dotenv import load_dotenv
 import os
 import json
-from datetime import datetime, timedelta, timezone
-from db import find_windows, get_window_stats, group_errors, collect_error_rate_evidence, fetch_latency_spike, _row, _fmt, get_trigger_logs, get_warns_before, get_trace, fetch_new_error_type
-from pprint import pprint
-
+from datetime import datetime
+from db import collect_error_rate_evidence, fetch_latency_spike, fetch_new_error_type
 
 load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
-
-
-
-
-
-# class InvestigationState(TypedDict):
-   
-#     alert: dict 
-#     logs: List[Dict[str, Any]]
-#     incidents: List[Dict[str, Any]]
-#     slow_requests: List[Dict[str, Any]]
-#     analysis: str | None
-
-
+# 1. State definition with report field added
 class InvestigationState(BaseModel):
     incident_id: int
-    service: str
-    rule: str                 
+    service_name: str
+    rule: str
     fingerprint: str
-    error_rate:  Optional[float] = None
-    started_at: int
-    resolved_at: int
+    started_at: datetime
+    resolved_at: Optional[datetime] = None
+    error_rate: Optional[float] = None
+    new_error_type: Optional[str] = None
+    evidence: Optional[dict] = None
+    report: Optional[str] = None  # Added field to store the generated LLM report
+
+
+# First node
+def find_log(state: InvestigationState) -> dict:
+    incident = {
+        "incident_id": state.incident_id,
+        "service": state.service_name,
+        "rule": state.rule,
+        "fingerprint": state.fingerprint,
+    }
+
+    if state.rule == "error_rate":
+        evidence = collect_error_rate_evidence(
+            service_name=state.service_name,
+            started_at=state.started_at,
+            resolved_at=state.resolved_at,
+            top_n=10,
+        )
+    elif state.rule == "new_error_type":
+        evidence = fetch_new_error_type(incident)
+    elif state.rule == "latency_spike":
+        evidence = fetch_latency_spike(incident)
+    else:
+        raise ValueError(f"Unknown rule: {state.rule}")
+
+    # Updates state.evidence
+    return {"evidence": evidence}
+
+
+SUMMARIZER_SYSTEM_PROMPT = """
+You are the Report Agent of an AI Incident Copilot.
+You receive an incident (rule, service, timing) and the evidence collected from the logs.
+Write a SHORT incident report (max ~150 words) based ONLY on the evidence given.
+
+Rules:
+- The evidence is the source of truth. Never invent logs, errors, timestamps, metrics or causes.
+- If the evidence is insufficient for a root cause, say it is uncertain.
+- Separate observed facts from the likely cause.
+- Do not mention internal tools, agents, prompts or state.
+
+Use exactly this format:
+
+Incident Report
+What happened: <1-2 sentences>
+Evidence: <2-4 short bullets>
+Likely root cause: <one sentence, or "Unable to determine from available evidence">
+Suggested fix: <one or two actionable sentences, or "No specific fix can be confidently recommended">
+Confidence: <HIGH / MEDIUM / LOW>
+"""
+
+
+# 2. Fixed node signature: accepts only `state` and returns a dict state update
+def summerize_llm(state: InvestigationState) -> dict:
+    logs = state.evidence  # Extract evidence directly from graph state
+    resolved = state.resolved_at.isoformat() if state.resolved_at else "still open"
+
+    incident_info = (
+        f"Incident ID: {state.incident_id}\n"
+        f"Service: {state.service_name}\n"
+        f"Rule triggered: {state.rule}\n"
+        f"Started at: {state.started_at.isoformat()}\n"
+        f"Resolved at: {resolved}\n"
+        f"Error rate: {state.error_rate if state.error_rate is not None else 'n/a'}\n"
+        f"New error type: {state.new_error_type or 'n/a'}"
+    )
+
+    messages = [
+        {"role": "system", "content": SUMMARIZER_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": f"{incident_info}\n\nCollected evidence:\n{json.dumps(logs, default=str, indent=2)}",
+        },
+    ]
+
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-20b",
+        messages=messages,
+        temperature=0.2,
+    )
+
+    # Return dict update to store result in state.report
+    return {"report": response.choices[0].message.content}
+
+
+# Graph Definition
+graph = StateGraph(InvestigationState)
+
+graph.add_node("find_log_node", find_log)
+graph.add_node("summerize_llm_node", summerize_llm)
+
+graph.set_entry_point("find_log_node")
+graph.add_edge("find_log_node", "summerize_llm_node")
+graph.add_edge("summerize_llm_node", END)
+
+app = graph.compile()
 
 
+initial_state = InvestigationState(
+    incident_id=4,
+    service_name="auth",
+    rule="new_error_type",
+    fingerprint="0125740d755e",
+    started_at=datetime.fromisoformat("2026-10-01 11:17:18.473783"),
+)
 
-def find_error_logs(state: InvestigationState):
+final_state = app.invoke(initial_state)
 
-    res_logs = collect_error_rate_evidence(
-        service_name="checkout", 
-        started_at="2026-10-01 07:08:37.884965", 
-        resolved_at=None, 
-        top_n=10)
-
-    error_rate = res_logs
-
-    return error_rate
-
-
-
-
-# started_at_dt = datetime.fromisoformat("2026-10-01 07:08:37.884965")
-
-# res_logs = collect_error_rate_evidence(
-#     service_name="checkout", 
-#     started_at=started_at_dt, 
-#     resolved_at=None, 
-#     top_n=10
-# )
-
-
-# trigger = get_trigger_logs(logs, incident["service"], incident["fingerprint"], now)
-# warns = get_warns_before(logs, incident["service"], trigger["first_seen"])
-# trace = get_trace(logs, trigger["samples"])
-
-
-# incident = {
-#     "incident_id": 3,
-#     "service": "auth",
-#     "rule": "new_error_type",
-#     "fingerprint": "0125740d755e",
-# }
-
-# print(fetch_new_error_type(incident))
-
-
-
-
-
-pprint(fetch_latency_spike({
-    "incident_id": 3,            # your latency_spike incident id
-    "service": "inventory",
-    "rule": "latency_spike",
-    "fingerprint": "638a3fefe1fc",           # not used by this rule
-}))
-
-# tools = [
-#     query_logs_tool,
-#     find_incident_tool,
-#     query_slow_requests_tool,
-# ]
-
-
-
-
-
-
-
-
-# SUMMARIZER_SYSTEM_PROMPT = """
-# You are the Summarizer / Report Agent of an AI Incident Copilot.
-
-# Your job is to analyze all available investigation evidence and produce
-# a structured incident report.
-
-# You will receive:
-
-# 1. The original user question.
-# 2. The investigation plan created by the Planner.
-# 3. Current investigation results collected by the Analyst.
-# 4. Similar historical incidents retrieved by the Retriever.
-
-# Your responsibilities:
-
-# 1. Analyze the current investigation results first.
-#    The current database/tool results are the primary source of truth.
-
-# 2. Explain what is currently happening based on the evidence.
-
-# 3. Identify the most likely root cause when the evidence supports one.
-
-# 4. Use similar historical incidents as supporting context, not as proof.
-#    A historical incident must never be treated as the current root cause
-#    unless the current evidence supports the connection.
-
-# 5. Suggest a practical fix based on the available evidence.
-
-# 6. Assign a confidence level:
-#    - HIGH: Current evidence directly supports the conclusion.
-#    - MEDIUM: Evidence supports the conclusion, but some uncertainty remains.
-#    - LOW: The conclusion is mainly based on historical similarity or weak evidence.
-
-# 7. Clearly distinguish:
-#    - Observed facts
-#    - Likely root cause
-#    - Historical similarity
-#    - Suggested fix
-#    - Uncertainty
-
-# 8. Never invent:
-#    - logs
-#    - incidents
-#    - timestamps
-#    - errors
-#    - metrics
-#    - root causes
-#    - fixes
-#    - database results
-
-# 9. If the available evidence is insufficient to determine the root cause,
-#    explicitly state that the root cause is uncertain.
-
-# 10. If no similar historical incidents were found, do not treat that as
-#     evidence that the incident is unique.
-
-# 11. Do not mention internal implementation details such as LangGraph,
-#     tools, agents, prompts, or state unless explicitly asked.
-
-# Return the result using this structure:
-
-# Incident Report
-
-# What happened:
-# <brief description of the observed problem>
-
-# Evidence:
-# - <important evidence from current investigation>
-
-# Likely root cause:
-# <most likely explanation supported by the evidence>
-# or
-# <Unable to determine from available evidence>
-
-# Suggested fix:
-# <practical action supported by the evidence>
-# or
-# <No specific fix can be confidently recommended>
-
-# Historical similarity:
-# <relevant similar incidents and what they suggest>
-# or
-# <No relevant historical incidents found>
-
-# Confidence:
-# <HIGH / MEDIUM / LOW>
-
-# Reasoning:
-# <brief explanation of why the root cause and confidence level
-# were selected>
-
-# Remember:
-# Current investigation evidence has higher priority than historical
-# incident similarity.
-# """
-
-
-
-# ANALYST_SYSTEM_PROMPT = """
-# You are the Analyst agent of an AI Incident Copilot.
-
-# Your job is to investigate the user's incident question by using the
-# available read-only investigation tools and return the evidence collected
-# from those tools.
-
-# Your responsibilities:
-
-# 1. Understand the user's investigation request or investigation plan.
-
-# 2. Determine which available tool is relevant to the request.
-
-# 3. Use the appropriate tools to retrieve the required data.
-
-# Available tools include:
-# - query_logs_tool
-# - find_incident_tool
-# - query_slow_requests_tool
-
-# 4. Choose tool arguments based only on information available in the
-#    user's request or investigation plan.
-
-# 5. If multiple types of information are required, call all relevant
-#    tools.
-
-# 6. Do not invent tool arguments, database results, logs, incidents,
-#    timestamps, services, errors, or latency values.
-
-# 7. If a tool returns an error, inspect the error and retry the
-#    investigation once with corrected arguments when possible.
-
-# 8. Do not retry the same failed tool call more than once.
-
-# 9. If a tool returns no matching records, preserve that result and
-#    report that no matching data was found.
-
-# 10. Only perform read-only investigation. Never modify, delete, or
-#     insert database data.
-
-# 11. Do not diagnose the root cause. Your job is to collect evidence,
-#     not make the final incident diagnosis.
-
-# 12. Continue investigating until all relevant parts of the request
-#     have been investigated.
-
-# 13. Return the collected tool results in a structured form that can
-#     be passed to another LLM for final analysis.
-
-# The database/tool results are the source of truth.
-# """
-
-
-# def analyst_llm(state: InvestigationState) -> Dict[str, Any]:
-
-#     messages = [
-#         {
-#             "role": "system",
-#             "content": ANALYST_SYSTEM_PROMPT
-#         },
-#         {
-#             "role": "user",
-#             "content": state["user_question"]
-#         }
-#     ]
-
-#     response = client.chat.completions.create(
-#     model="openai/gpt-oss-20b",
-#     messages=messages,
-#     tools=TOOLS,
-#     tool_choice="auto",
-# )
-#     msg = response.choices[0].message
-
-#     logs, incidents, slow = [], [], []
-
-#     for call in msg.tool_calls or []:
-#         name = call.function.name
-#         try:
-#             args = json.loads(call.function.arguments)
-#         except json.JSONDecodeError:
-#             args = {}
-
-#         try:
-#             if name == "query_logs_tool":
-#                 logs.append(query_logs_tool(**args))
-#             elif name == "find_incident_tool":
-#                 incidents.append(find_incident_tool(**args))
-#             elif name == "query_slow_requests_tool":
-#                 slow.append(query_slow_requests_tool(**args))
-#         except Exception as e:
-#             err = {"error": str(e), "tool": name, "args": args}
-#             # store the error so the summarizer can see it
-#             (logs if name == "query_logs_tool"
-#             else incidents if name == "find_incident_tool"
-#             else slow).append(err)
-
-#     return {"logs": logs, "incidents": incidents, "slow_requests": slow}
-
-
-
-# def summerize_llm (state: InvestigationState) -> Dict[str, Any]:
-#     # Correct key name access ('incidents' instead of 'incident')
-#     logs = state.get("logs", [])
-#     incidents = state.get("incidents", [])
-#     latency = state.get("high_latency", [])
-
-#     context = f"Incidents: {incidents}\nLogs: {logs}\nLatency {latency}"
-
-#     messages = [
-#         {"role": "system", "content": SUMMARIZER_SYSTEM_PROMPT},
-#         {"role": "user", "content": f"Question: {state['user_question']}\n{context}"}
-#     ]
-
-#     response = client.chat.completions.create(
-#         model="openai/gpt-oss-20b",
-#         messages=messages,
-#     )
-
-#     # Return dictionary update instead of direct mutation
-#     return {
-#         "analysis": response.choices[0].message.content
-#     }
-
-
-# # Graph Definition
-# graph = StateGraph(InvestigationState)
-
-# graph.add_node("planner_node", analyst_llm)
-# graph.add_node("llm_analyst_node", summerize_llm)
-
-# graph.set_entry_point("planner_node")
-# graph.add_edge("planner_node", "llm_analyst_node")
-# graph.add_edge("llm_analyst_node", END)
-
-# app = graph.compile()
+# Printed report output
+print(final_state["report"])
 
 
 
