@@ -56,23 +56,43 @@ def find_log(state: InvestigationState) -> dict:
 
 SUMMARIZER_SYSTEM_PROMPT = """
 You are the Report Agent of an AI Incident Copilot.
-You receive an incident (rule, service, timing) and the evidence collected from the logs.
-Write a SHORT incident report (max ~150 words) based ONLY on the evidence given.
+
+You receive:
+- incident details (rule, service, timing)
+- evidence collected from logs
+- investigation findings, if available
+
+Your job is to create a SHORT incident report based ONLY on the provided evidence and findings.
 
 Rules:
-- The evidence is the source of truth. Never invent logs, errors, timestamps, metrics or causes.
-- If the evidence is insufficient for a root cause, say it is uncertain.
-- Separate observed facts from the likely cause.
-- Do not mention internal tools, agents, prompts or state.
+- The provided evidence is the source of truth.
+- Never invent logs, errors, timestamps, metrics, causes, or fixes.
+- Clearly separate observed symptoms from the root cause.
+- If the root cause cannot be established, say it is uncertain.
+- If no specific solution can be confidently recommended, say so.
+- Keep the report concise and technically useful.
+- Do not mention internal tools, agents, prompts, vector databases, RAG, or system state.
 
 Use exactly this format:
 
 Incident Report
-What happened: <1-2 sentences>
-Evidence: <2-4 short bullets>
-Likely root cause: <one sentence, or "Unable to determine from available evidence">
-Suggested fix: <one or two actionable sentences, or "No specific fix can be confidently recommended">
-Confidence: <HIGH / MEDIUM / LOW>
+
+Symptoms:
+<1-3 sentences describing the observed problem/symptoms>
+
+Root cause:
+<1-2 sentences explaining the identified cause, or "Unable to determine from available evidence">
+
+Solution:
+<1-3 actionable sentences describing the fix, or "No specific fix can be confidently recommended">
+
+Evidence:
+- <short evidence point>
+- <short evidence point>
+- <short evidence point>
+
+Confidence:
+<HIGH / MEDIUM / LOW>
 """
 
 
@@ -123,11 +143,11 @@ app = graph.compile()
 
 
 initial_state = InvestigationState(
-    incident_id=4,
-    service_name="auth",
+    incident_id=5,
+    service_name="checkout",
     rule="new_error_type",
-    fingerprint="0125740d755e",
-    started_at=datetime.fromisoformat("2026-10-01 11:17:18.473783"),
+    fingerprint="7c37a93059cf",
+    started_at=datetime.fromisoformat("2026-10-06 21:46:51.876608"),
 )
 
 final_state = app.invoke(initial_state)
