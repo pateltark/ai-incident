@@ -1,127 +1,214 @@
 """
-setup_db.py
+create_tables.py
 
-Run this once (or any time you want to recreate the schema from scratch)
-to create every table console.py depends on: services, application_logs,
-incidents - plus the indexes and constraints that console.py's queries
-actually rely on (the partial unique index that makes duplicate-incident
-prevention work, and the confidence check constraint).
-
-Safe to re-run: everything uses IF NOT EXISTS, so running this against a
-database that already has these tables just does nothing extra.
-
-Setup:
-    pip install psycopg2-binary python-dotenv
-    Same .env as console.py: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
-    (or a single DATABASE_URL)
+Rebuilds the ai-incident database structure from scratch.
+Safe to run any number of times: everything uses IF NOT EXISTS, so running it
+on an existing database changes nothing (and adds any column that is missing).
 
 Run:
-    python setup_db.py
+    python create_tables.py
+
+Uses the same .env as the rest of the project:
+    DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+
+What it does, in order:
+    1. creates the database itself if it does not exist
+    2. enables the pgvector extension (needed for incidents.embedding)
+    3. creates the tables: services, application_logs, incidents
+    4. adds the newer incident columns if they are missing
+    5. creates the indexes
+    6. inserts the four default services
+
+NOT included: the `events` table. Its columns were never shared, so it is
+left out on purpose rather than guessed. See the note at the bottom of SCHEMA_SQL.
+
+Requirements:
+    - pgvector must be installed on the Postgres server
+      (CREATE EXTENSION vector fails without it)
+    - the DB user must be allowed to create a database and an extension
+      (the default `postgres` user can)
 """
 
 import os
+import sys
+
 import psycopg2
+from psycopg2 import sql
 from dotenv import load_dotenv
 
-SCHEMA_SQL = """
--- Needed for the incidents.embedding column (used later once you wire up
--- retrieval - harmless to have now even if nothing writes to it yet).
+load_dotenv()
+
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = int(os.getenv("DB_PORT", "5432"))
+DB_NAME = os.getenv("DB_NAME", "ai_incident")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+
+# Must match the model in console.py (all-MiniLM-L6-v2 gives 384 numbers).
+# If you switch the embedding model, change this number too.
+EMBEDDING_DIMENSIONS = 384
+
+
+SCHEMA_SQL = f"""
+-- ---------------------------------------------------------------
+-- extension
+-- ---------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS vector;
 
+
+-- ---------------------------------------------------------------
+-- services
+-- ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS services (
-    id           SERIAL PRIMARY KEY,
-    name         VARCHAR(100) NOT NULL UNIQUE,
-    environment  VARCHAR(50)  NOT NULL DEFAULT 'production'
+    id           serial       PRIMARY KEY,
+    name         varchar(100) NOT NULL UNIQUE,
+    environment  varchar(50)  NOT NULL DEFAULT 'production',
+    created_at   timestamp    NOT NULL DEFAULT now()
 );
 
+
+-- ---------------------------------------------------------------
+-- application_logs
+-- ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS application_logs (
-    id          SERIAL PRIMARY KEY,
-    service_id  INTEGER NOT NULL REFERENCES services(id),
-    level       VARCHAR(20) NOT NULL,
-    message     TEXT NOT NULL,
-    latency_ms  REAL,
-    request_id  VARCHAR(64),
-    timestamp   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
+    id          serial        PRIMARY KEY,
+    service_id  integer       NOT NULL REFERENCES services(id),
+    level       varchar(20)   NOT NULL,
+    message     text          NOT NULL,
+    latency_ms  numeric(12,2),
+    request_id  varchar(64),
+    timestamp   timestamp     NOT NULL DEFAULT now()
 );
 
--- console.py's bucket queries filter by service_id + timestamp range on
--- every check - this index is what keeps that fast as the table grows.
-CREATE INDEX IF NOT EXISTS idx_application_logs_service_timestamp
-    ON application_logs (service_id, timestamp);
 
+-- ---------------------------------------------------------------
+-- incidents
+-- ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS incidents (
-    id                      SERIAL PRIMARY KEY,
-    service_id              INTEGER NOT NULL REFERENCES services(id),
-    rule                    VARCHAR(30),
-    fingerprint             VARCHAR(64),
-    title                   VARCHAR(255) NOT NULL,
-    description             TEXT,
-    severity                VARCHAR(20) NOT NULL DEFAULT 'medium',
-    status                  VARCHAR(20) NOT NULL DEFAULT 'open',
-    started_at              TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-    resolved_at             TIMESTAMP WITHOUT TIME ZONE,
-    created_at              TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-    root_cause              TEXT,
-    resolution              TEXT,
-    resolution_confidence   VARCHAR(20),
-    embedding               vector(1536),
-
-    CONSTRAINT incidents_resolution_confidence_check
-        CHECK (resolution_confidence IS NULL
-               OR resolution_confidence IN ('confirmed', 'inferred', 'unknown'))
+    id                     serial        PRIMARY KEY,
+    service_id             integer       NOT NULL REFERENCES services(id),
+    title                  varchar(255)  NOT NULL,
+    description            text,
+    severity               varchar(20)   NOT NULL DEFAULT 'medium',
+    status                 varchar(20)   NOT NULL DEFAULT 'open',
+    started_at             timestamp     NOT NULL DEFAULT now(),
+    resolved_at            timestamp,
+    created_at             timestamp     NOT NULL DEFAULT now(),
+    fingerprint            varchar(64),
+    root_cause             text,
+    resolution             text,
+    resolution_confidence  varchar(20),
+    embedding              vector({EMBEDDING_DIMENSIONS}),
+    rule                   varchar(30)
 );
 
--- This is what makes "ON CONFLICT (service_id, fingerprint) WHERE status =
--- 'open' DO NOTHING" in console.py actually work - a normal unique
--- constraint can't be scoped to only open incidents, a partial unique
--- index can. Without this exact index, try_open_incident() will error.
-CREATE UNIQUE INDEX IF NOT EXISTS incidents_open_service_fingerprint_idx
+-- columns added later (also makes this script upgrade an older incidents table)
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS signature_text text;
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS log_templates  jsonb;
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS error_type     varchar(100);
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS evidence       text;
+
+
+-- ---------------------------------------------------------------
+-- indexes
+-- ---------------------------------------------------------------
+
+-- Only ONE open incident per (service, fingerprint).
+-- console.py relies on this: INSERT ... ON CONFLICT (service_id, fingerprint) WHERE status = 'open'
+CREATE UNIQUE INDEX IF NOT EXISTS uq_incidents_open_service_fingerprint
     ON incidents (service_id, fingerprint)
     WHERE status = 'open';
 
-CREATE INDEX IF NOT EXISTS idx_incidents_status
-    ON incidents (status);
+CREATE INDEX IF NOT EXISTS idx_incidents_status_started
+    ON incidents (status, started_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_logs_service_timestamp
+    ON application_logs (service_id, timestamp);
+
+CREATE INDEX IF NOT EXISTS idx_logs_request_id
+    ON application_logs (request_id);
+
+-- Optional: speeds up similarity search once you have thousands of incidents.
+-- Not needed for a small project, so it is left off.
+-- CREATE INDEX IF NOT EXISTS idx_incidents_embedding
+--     ON incidents USING hnsw (embedding vector_cosine_ops);
+
+
+-- ---------------------------------------------------------------
+-- default services (same list as KNOWN_SERVICES in console.py)
+-- ---------------------------------------------------------------
+INSERT INTO services (name, environment) VALUES
+    ('checkout',  'production'),
+    ('payment',   'production'),
+    ('auth',      'production'),
+    ('inventory', 'production')
+ON CONFLICT (name) DO NOTHING;
+
+
+-- ---------------------------------------------------------------
+-- NOTE: `events` table is not created here. Its columns were not shared.
+-- Add its CREATE TABLE statement here once you have it
+-- (run \\d events in psql, or send the column list to Claude).
+-- ---------------------------------------------------------------
 """
 
 
-def load_db_config():
-    load_dotenv()
-    if os.getenv("DATABASE_URL"):
-        return {"dsn": os.environ["DATABASE_URL"]}
-    return {
-        "dsn": None,
-        "host": os.getenv("DB_HOST", "localhost"),
-        "port": os.getenv("DB_PORT", "5432"),
-        "dbname": os.getenv("DB_NAME", "incident_copilot"),
-        "user": os.getenv("DB_USER", "postgres"),
-        "password": os.getenv("DB_PASSWORD", ""),
-    }
-
-
-def connect():
-    cfg = load_db_config()
-    if cfg.get("dsn"):
-        return psycopg2.connect(cfg["dsn"])
-    return psycopg2.connect(
-        host=cfg["host"], port=cfg["port"], dbname=cfg["dbname"],
-        user=cfg["user"], password=cfg["password"],
+def create_database_if_missing():
+    """Connects to the built-in 'postgres' database and creates DB_NAME if needed."""
+    conn = psycopg2.connect(
+        host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASSWORD, dbname="postgres"
     )
+    conn.autocommit = True  # CREATE DATABASE cannot run inside a transaction
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM pg_database WHERE datname = %s;", (DB_NAME,))
+            if cur.fetchone():
+                print(f"[db] database '{DB_NAME}' already exists")
+            else:
+                cur.execute(sql.SQL("CREATE DATABASE {};").format(sql.Identifier(DB_NAME)))
+                print(f"[db] created database '{DB_NAME}'")
+    finally:
+        conn.close()
 
 
-def main():
-    print("[setup_db] connecting...")
-    conn = connect()
+def create_schema():
+    conn = psycopg2.connect(
+        host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASSWORD, dbname=DB_NAME
+    )
     try:
         with conn.cursor() as cur:
             cur.execute(SCHEMA_SQL)
         conn.commit()
-        print("[setup_db] done - services, application_logs, incidents are ready.")
-    except Exception as e:
+        print("[db] tables, columns and indexes are in place")
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT table_name, count(*) AS columns
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                GROUP BY table_name ORDER BY table_name;
+                """
+            )
+            print("\n  table                columns")
+            for table_name, n in cur.fetchall():
+                print(f"  {table_name:<20} {n}")
+    except Exception:
         conn.rollback()
-        print(f"[setup_db] failed: {e}")
         raise
     finally:
         conn.close()
+
+
+def main():
+    try:
+        create_database_if_missing()
+        create_schema()
+    except psycopg2.errors.FeatureNotSupported as e:
+        sys.exit(f"\n[db] pgvector is not available on this Postgres server: {e}")
+    except psycopg2.Error as e:
+        sys.exit(f"\n[db] failed: {e}")
+    print("\n[db] done.")
 
 
 if __name__ == "__main__":

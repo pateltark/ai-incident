@@ -14,14 +14,28 @@ the root cause / fix, it saves them and closes the row) and an
 closes the ones that have gone quiet - the same "did the signal stop"
 logic your V4 resolution watcher will eventually run on a schedule.
 
-No embedding step yet - this just asks a human for the root cause and
-resolution and saves them as plain text on the incident, so the data is
-there and ready. Once you've got an embedding function you trust (reuse
-whatever you used in your RAG project), that's a small add-on later:
-embed the closing text and fill in the `embedding` column at that point.
+NEW in this version: SIGNATURE TEXT.
+When an incident opens, we automatically build a "signature" from the
+logs (no human description, no LLM needed):
+    service: payment
+    error_type: DBConnectionTimeout
+    top_log_templates:
+      - Timeout connecting to payment-db after <NUM>ms (x120)
+      - ...
+    first_error: Timeout connecting to payment-db...
+and save it on the incident (`signature_text`) together with the raw
+template counts (`log_templates`, jsonb). This is what you will embed
+and search on later to find similar, already-solved incidents.
+
+EMBEDDING: right after the signature is saved, the incident's templates
+are turned into a clean embed text (build_embed_text) and embedded with
+sentence-transformers; the vector goes into `incidents.embedding`.
+Set EMBED_MODEL in .env to use another model (default all-MiniLM-L6-v2,
+384 dimensions - your `embedding` column must match that size).
+    pip install sentence-transformers
 
 Setup:
-    pip install psycopg2-binary python-dotenv
+    pip install psycopg2-binary python-dotenv sentence-transformers
     (uses the same .env as before: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)
 
 Run:
@@ -32,6 +46,7 @@ Then type commands at the prompt. Type `help` to see all of them.
 
 import datetime
 import hashlib
+import json
 import os
 import re
 import statistics
@@ -70,6 +85,207 @@ def fingerprint(message: str, length: int = 12) -> str:
     normalized = normalize(message)
     digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()
     return digest[:length]
+
+
+# ---------------------------------------------------------------------------
+# Signature text - NEW
+#
+# Turns the raw logs around an incident into a clean, human-readable
+# "signature" (masked templates + counts + first error). Same function is
+# used for every incident, old or new, so signatures stay comparable.
+# ---------------------------------------------------------------------------
+
+SIGNATURE_WINDOW_MINUTES = 15      # how far back from "incident opened" we look for logs
+SIGNATURE_TOP_TEMPLATES = 5        # how many templates go into the signature text
+SIGNATURE_STORE_TEMPLATES = 50     # how many templates (with counts) go into the jsonb column
+SIGNATURE_MAX_LOGS = 5000          # safety cap on rows pulled per incident
+FIRST_ERROR_MAX_CHARS = 200
+
+# These differ from normalize() above on purpose: they keep the original
+# casing (readable text) and use <NUM>/<ID>/<IP>/<TS> placeholders.
+# Look-arounds are used instead of \b so ids glued to '_' or '=' still match
+# (e.g. txn_8f3a9c01d2, req_id=a81f...).
+_SIG_TS_RE = re.compile(
+    r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?"
+)
+_SIG_UUID_RE = re.compile(
+    r"(?<![0-9A-Za-z])[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![0-9A-Za-z])",
+    re.IGNORECASE,
+)
+_SIG_IP_RE = re.compile(r"(?<![0-9A-Za-z])(?:\d{1,3}\.){3}\d{1,3}(?![0-9A-Za-z])")
+# long hex-looking tokens that mix digits and letters (request ids, txn ids)
+_SIG_HEX_RE = re.compile(
+    r"(?<![0-9A-Za-z])(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{8,}(?![0-9A-Za-z])",
+    re.IGNORECASE,
+)
+# numbers not glued to a preceding letter (so 'p95' and 'db2' stay, '5003ms' -> '<NUM>ms')
+_SIG_NUM_RE = re.compile(r"(?<![A-Za-z])\d+(?:\.\d+)?")
+
+
+def mask_log(message: str) -> str:
+    """Replace the parts of a log line that change every time with placeholders."""
+    text = message.strip()
+    text = _SIG_TS_RE.sub("<TS>", text)
+    text = _SIG_UUID_RE.sub("<ID>", text)
+    text = _SIG_IP_RE.sub("<IP>", text)
+    text = _SIG_HEX_RE.sub("<ID>", text)
+    text = _SIG_NUM_RE.sub("<NUM>", text)
+    text = _WS_RE.sub(" ", text)
+    return text
+
+
+def build_signature(service_name, error_type, rows, top_n=SIGNATURE_TOP_TEMPLATES):
+    """
+    rows: list of (message, level), oldest first.
+    Returns (signature_text, templates_dict).
+
+    NOTE: this console has no separate "error type" yet, so the caller passes
+    the detector rule name (error_rate / new_error_type / latency_spike) as
+    error_type. If you later get a real error type (e.g. DBConnectionTimeout),
+    just pass that instead - nothing else changes.
+    """
+    if not rows:
+        text = (
+            f"service: {service_name}\n"
+            f"error_type: {error_type}\n"
+            f"top_log_templates:\n"
+            f"  (no logs found in the last {SIGNATURE_WINDOW_MINUTES} minutes)\n"
+            f"first_error: (none)"
+        )
+        return text, {}
+
+    templates = Counter(mask_log(msg) for msg, _ in rows)
+    top = templates.most_common(top_n)
+
+    # first error = earliest ERROR line; fall back to the earliest line of any level
+    first_raw = next((msg for msg, level in rows if level == "ERROR"), rows[0][0]).strip()
+    if len(first_raw) > FIRST_ERROR_MAX_CHARS:
+        first_raw = first_raw[:FIRST_ERROR_MAX_CHARS] + "..."
+
+    lines = [f"service: {service_name}", f"error_type: {error_type}", "top_log_templates:"]
+    for template, count in top:
+        lines.append(f"  - {template} (x{count})")
+    lines.append(f"first_error: {first_raw}")
+
+    return "\n".join(lines), dict(templates.most_common(SIGNATURE_STORE_TEMPLATES))
+
+
+def build_embed_text(service_name, error_type, templates):
+    """
+    The cleaner text you should actually EMBED later: no counts, no field
+    labels, no service_id (use service_id as a SQL filter instead).
+    `templates` is the dict stored in incidents.log_templates.
+    """
+    top = sorted(templates, key=templates.get, reverse=True)[:SIGNATURE_TOP_TEMPLATES]
+    return f"{error_type} {service_name}\n" + "\n".join(top)
+
+
+def fetch_signature_logs(conn, service_id, window_minutes=SIGNATURE_WINDOW_MINUTES):
+    """Logs for this service in the window before the incident opened. ERROR/WARN first."""
+    sql = """
+        SELECT message, level FROM application_logs
+        WHERE service_id = %s
+          AND timestamp >= now() - (%s * interval '1 minute')
+          AND level IN ('ERROR', 'WARN')
+        ORDER BY timestamp
+        LIMIT %s;
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql, (service_id, window_minutes, SIGNATURE_MAX_LOGS))
+        rows = cur.fetchall()
+    if rows:
+        return rows
+
+    # e.g. a latency_spike with no errors: fall back to every level so the
+    # signature still says something (usually "request completed (xN)")
+    sql_all = """
+        SELECT message, level FROM application_logs
+        WHERE service_id = %s
+          AND timestamp >= now() - (%s * interval '1 minute')
+        ORDER BY timestamp
+        LIMIT %s;
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql_all, (service_id, window_minutes, SIGNATURE_MAX_LOGS))
+        return cur.fetchall()
+
+
+SAVE_SIGNATURE_SQL = """
+    UPDATE incidents
+    SET signature_text = %s,
+        log_templates = %s::jsonb,
+        error_type = %s
+    WHERE id = %s;
+"""
+
+
+# --- embeddings -------------------------------------------------------------
+# The model runs right here in this file - nothing to put in .env.
+# The first time it is used, sentence-transformers downloads it automatically
+# (about 90 MB, one time only) and caches it on your machine.
+# This model gives 384 numbers per vector, so incidents.embedding must be vector(384).
+# If you change the model, change the column size to match
+# (all-mpnet-base-v2 = 768).
+EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+_EMBEDDER = None
+
+
+def get_embedder():
+    """Loads the model once (first use is slow, later calls are instant)."""
+    global _EMBEDDER
+    if _EMBEDDER is None:
+        from sentence_transformers import SentenceTransformer
+        print(f"  (loading embedding model {EMBED_MODEL_NAME} ...)")
+        _EMBEDDER = SentenceTransformer(EMBED_MODEL_NAME)
+    return _EMBEDDER
+
+
+def embed_text(text):
+    """Text -> list of floats. Normalized so cosine distance (<=>) works well."""
+    vec = get_embedder().encode(text, normalize_embeddings=True)
+    return [float(x) for x in vec]
+
+
+def save_embedding(conn, incident_id, service_name, rule, templates):
+    """
+    Embeds the CLEAN text (build_embed_text: no counts, no labels, no service_id),
+    not the full signature_text, and saves it in incidents.embedding.
+    """
+    text = build_embed_text(service_name, rule, templates)
+    vec = embed_text(text)
+    vec_literal = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"  # pgvector text format
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE incidents SET embedding = %s::vector WHERE id = %s;",
+            (vec_literal, incident_id),
+        )
+    conn.commit()
+    return len(vec)
+
+
+def store_signature(conn, incident_id, service_id, service_name, rule):
+    """Build the signature for a freshly opened incident and save it on the row."""
+    rows = fetch_signature_logs(conn, service_id)
+    signature_text, templates = build_signature(service_name, rule, rows)
+    with conn.cursor() as cur:
+        # error_type: this console has no real error type yet, so the detector
+        # rule is used (same value that appears in the signature text).
+        cur.execute(
+            SAVE_SIGNATURE_SQL,
+            (signature_text, json.dumps(templates), rule[:100], incident_id),
+        )
+    conn.commit()
+
+    # Embedding is a separate step: if the model or the column dimension is
+    # wrong, the signature above is already saved and the incident still opens.
+    try:
+        dims = save_embedding(conn, incident_id, service_name, rule, templates)
+        print(f"      embedding saved ({dims} dims)")
+    except Exception as e:
+        conn.rollback()
+        print(f"  (could not save embedding for incident {incident_id}: {e})")
+
+    return signature_text
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +345,17 @@ def connect():
 
 
 KNOWN_SERVICES = ["checkout", "payment", "auth", "inventory"]
+
+
+def ensure_schema(conn):
+    """Adds the two new columns if they aren't there yet (safe to run every start)."""
+    with conn.cursor() as cur:
+        cur.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS signature_text text;")
+        cur.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS log_templates jsonb;")
+        cur.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS error_type varchar(100);")
+        # old incidents (opened before this feature) have error_type NULL: fill from rule
+        cur.execute("UPDATE incidents SET error_type = rule WHERE error_type IS NULL AND rule IS NOT NULL;")
+    conn.commit()
 
 
 def ensure_services(conn):
@@ -314,6 +541,19 @@ def try_open_incident(conn, service_id, service_name, rule, fp, title, descripti
     print(f"  >>> INCIDENT OPENED  id={incident_id}  rule={rule}  severity={severity}  fingerprint={fp}")
     print(f"      {description}")
 
+    # NEW: build the signature text from the logs and save it on the incident.
+    # Done BEFORE the callbacks so agents already get it in the alert payload.
+    # If it fails, the incident stays open - the signature is an add-on, not a blocker.
+    signature_text = None
+    try:
+        signature_text = store_signature(conn, incident_id, service_id, service_name, rule)
+        print("      signature saved:")
+        for sig_line in signature_text.splitlines():
+            print(f"        {sig_line}")
+    except Exception as e:
+        conn.rollback()
+        print(f"  (could not build signature for incident {incident_id}: {e})")
+
     # Build alert payload
     alert_payload = {
         "incident_id": incident_id,
@@ -322,7 +562,8 @@ def try_open_incident(conn, service_id, service_name, rule, fp, title, descripti
         "fingerprint": fp,
         "title": title,
         "description": description,
-        "severity": severity
+        "severity": severity,
+        "signature_text": signature_text,
     }
 
     # Automatically notify agents in-memory without relying on DB status updates
@@ -391,7 +632,7 @@ def check_all(conn):
 
 
 # ---------------------------------------------------------------------------
-# Resolving / closing - the new part
+# Resolving / closing
 # ---------------------------------------------------------------------------
 
 CLOSE_INCIDENT_SQL = """
@@ -520,6 +761,7 @@ Commands:
   latency <service> <ms>              write one INFO log with a custom latency_ms, then check
   check [service]                     manually run detection (all services, or just one)
   incidents                           list all incidents
+  signature <id>                      show the saved signature text + template counts of an incident
   resolve <id>                        manually close an incident - asks you for the root cause,
                                        then sets status=resolved
   autoclose [minutes]                 check every open incident's condition; close the ones that
@@ -527,6 +769,7 @@ Commands:
   logs <service> [n]                  show the last n logs for a service (default 10)
   services                            list known services
   fp <message...>                     show what fingerprint a message normalizes/hashes to
+  mask <message...>                   show what the signature masking turns a message into
   help                                show this again
   quit / exit                         stop
 
@@ -538,6 +781,7 @@ Examples:
   latency inventory 900
   check
   incidents
+  signature 3
   resolve 3
   autoclose
   autoclose 5
@@ -558,6 +802,23 @@ def cmd_incidents(conn):
     print(f"  {'id':<4} {'service':<10} {'rule':<16} {'fingerprint':<14} {'status':<10} {'severity':<8} started_at")
     for r in rows:
         print(f"  {r[0]:<4} {r[1]:<10} {r[2] or '-':<16} {r[3] or '-':<14} {r[4]:<10} {r[5]:<8} {r[6]}")
+
+
+def cmd_signature(conn, incident_id):
+    with conn.cursor() as cur:
+        cur.execute("SELECT signature_text, log_templates FROM incidents WHERE id = %s;", (incident_id,))
+        row = cur.fetchone()
+    if row is None:
+        print(f"  no incident with id {incident_id}")
+        return
+    signature_text, log_templates = row
+    if not signature_text:
+        print("  (no signature saved for this incident - it was opened before this feature existed)")
+        return
+    print("  signature_text:")
+    for line in signature_text.splitlines():
+        print(f"    {line}")
+    print(f"  log_templates: {len(log_templates or {})} distinct template(s) stored")
 
 
 def cmd_resolve(conn, incident_id):
@@ -608,6 +869,7 @@ def cmd_services(conn):
 def repl():
     print("[console] connecting to the database...")
     conn = connect()
+    ensure_schema(conn)
     ensure_services(conn)
     print("[console] connected. Type 'help' for commands, 'quit' to exit.\n")
 
@@ -674,6 +936,12 @@ def repl():
             elif cmd == "incidents":
                 cmd_incidents(conn)
 
+            elif cmd == "signature":
+                if not rest:
+                    print("  usage: signature <id>")
+                    continue
+                cmd_signature(conn, int(rest[0]))
+
             elif cmd == "resolve":
                 if not rest:
                     print("  usage: resolve <id>")
@@ -702,6 +970,12 @@ def repl():
                 message = " ".join(rest)
                 print(f"  normalized: {normalize(message)}")
                 print(f"  fingerprint: {fingerprint(message)}")
+
+            elif cmd == "mask":
+                if not rest:
+                    print("  usage: mask <message...>")
+                    continue
+                print(f"  masked: {mask_log(' '.join(rest))}")
 
             else:
                 print(f"  unknown command '{cmd}' - type 'help'")

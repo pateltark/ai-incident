@@ -6,7 +6,13 @@ from dotenv import load_dotenv
 import os
 import json
 from datetime import datetime
-from db import collect_error_rate_evidence, fetch_latency_spike, fetch_new_error_type
+from db import collect_error_rate_evidence, fetch_latency_spike, fetch_new_error_type, parse_report, save_investigation_result
+
+
+# save_investigation_result(
+#     state.incident_id, state.symptoms, state.root_cause,
+#     state.solution, state.evidence_summary, state.confidence,
+# )
 
 load_dotenv()
 
@@ -25,6 +31,22 @@ class InvestigationState(BaseModel):
     new_error_type: Optional[str] = None
     evidence: Optional[dict] = None
     report: Optional[str] = None  # Added field to store the generated LLM report
+
+
+    symptoms: Optional[str] = None
+    root_cause: Optional[str] = None
+    solution: Optional[str] = None
+    evidence_summary: Optional[str] = None
+    confidence: Optional[str] = None
+
+
+
+def save_report(state: InvestigationState) -> dict:
+    save_investigation_result(
+        state.incident_id, state.symptoms, state.root_cause,
+        state.solution, state.evidence_summary, state.confidence,
+    )
+    return {}
 
 
 # First node
@@ -51,6 +73,7 @@ def find_log(state: InvestigationState) -> dict:
         raise ValueError(f"Unknown rule: {state.rule}")
 
     # Updates state.evidence
+    print (evidence)
     return {"evidence": evidence}
 
 
@@ -96,6 +119,7 @@ Confidence:
 """
 
 
+
 # 2. Fixed node signature: accepts only `state` and returns a dict state update
 def summerize_llm(state: InvestigationState) -> dict:
     logs = state.evidence  # Extract evidence directly from graph state
@@ -125,8 +149,21 @@ def summerize_llm(state: InvestigationState) -> dict:
         temperature=0.2,
     )
 
-    # Return dict update to store result in state.report
-    return {"report": response.choices[0].message.content}
+    text = response.choices[0].message.content
+    p = parse_report(text)
+
+
+
+    return {
+    "report": text,
+    "symptoms": p["symptoms"],
+    "root_cause": p["root_cause"],
+    "solution": p["solution"],
+    "evidence_summary": p["evidence"],
+    "confidence": p["confidence"],
+    }
+
+
 
 
 # Graph Definition
@@ -143,11 +180,11 @@ app = graph.compile()
 
 
 initial_state = InvestigationState(
-    incident_id=5,
-    service_name="checkout",
-    rule="new_error_type",
-    fingerprint="7c37a93059cf",
-    started_at=datetime.fromisoformat("2026-10-06 21:46:51.876608"),
+    incident_id=14,
+    service_name="payment",
+    rule="error_rate",
+    fingerprint="206505175d85",
+    started_at=datetime.fromisoformat("2026-10-07 11:46:20.987586"),
 )
 
 final_state = app.invoke(initial_state)

@@ -705,3 +705,133 @@ def fetch_latency_spike(incident):
             "notes": notes,
         },
     }
+
+
+# ======================= Incident Report (LLM result) =====================================
+#
+# Saves the LLM investigation result on the incident row.
+#   Symptoms    -> description
+#   Root cause  -> root_cause
+#   Solution    -> resolution
+#   Evidence    -> evidence               (new column, see ensure_report_columns)
+#   Confidence  -> resolution_confidence  ('inferred' or 'unknown', never 'confirmed')
+#
+# This does NOT close the incident: status and resolved_at are left alone.
+
+
+def ensure_report_columns():
+    """Adds the evidence column (safe to call on every start)."""
+    with get_connection() as cur:
+        cur.execute("ALTER TABLE public.incidents ADD COLUMN IF NOT EXISTS evidence text;")
+
+
+# ---------- parsing the LLM text ----------
+
+_SECTION_RE = re.compile(
+    r"^\s*(Symptoms|Root cause|Solution|Evidence|Confidence)\s*:\s*",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def parse_report(text):
+    """
+    Splits the LLM report into its five sections.
+    Returns a dict with keys: symptoms, root_cause, solution, evidence, confidence
+    (a missing section gives None).
+    """
+    text = text or ""
+    matches = list(_SECTION_RE.finditer(text))
+    sections = {}
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        sections[m.group(1).lower()] = text[m.end():end].strip()
+
+    conf_word = re.match(r"[A-Za-z]+", sections.get("confidence", "") or "")
+    return {
+        "symptoms": sections.get("symptoms") or None,
+        "root_cause": sections.get("root cause") or None,
+        "solution": sections.get("solution") or None,
+        "evidence": sections.get("evidence") or None,
+        "confidence": conf_word.group(0).upper() if conf_word else None,
+    }
+
+
+# ---------- cleaning the values before they go into the db ----------
+
+_UNDETERMINED_PHRASES = (
+    "unable to determine",
+    "cannot be determined",
+    "can't be determined",
+    "not enough evidence",
+    "insufficient evidence",
+    "no specific fix",
+    "no fix can be",
+    "unknown",
+)
+
+
+def is_undetermined(text):
+    """True when the LLM said 'I don't know' instead of giving a real answer."""
+    if not text:
+        return True
+    lowered = text.lower()
+    return any(p in lowered for p in _UNDETERMINED_PHRASES)
+
+
+def map_confidence(llm_confidence, root_cause):
+    """
+    LLM says HIGH / MEDIUM / LOW. The db uses confirmed / inferred / unknown.
+    Nobody has confirmed an LLM guess, so 'confirmed' is never used here.
+    """
+    if root_cause is None:
+        return "unknown"
+    if (llm_confidence or "").upper() in ("HIGH", "MEDIUM"):
+        return "inferred"
+    return "unknown"
+
+
+# ---------- the function you call from the graph ----------
+
+SAVE_REPORT_SQL = """
+    UPDATE public.incidents
+    SET description = COALESCE(%s, description),
+        root_cause = %s,
+        resolution = %s,
+        resolution_confidence = %s,
+        evidence = %s
+    WHERE id = %s
+      AND root_cause IS NULL;   -- never overwrite a root cause someone already wrote
+"""
+
+
+def save_investigation_result(
+    incident_id,
+    symptoms=None,
+    root_cause=None,
+    solution=None,
+    evidence=None,
+    confidence=None,
+):
+    """
+    Saves the LLM investigation result on the incident row.
+    Returns True if the row was updated, False if it was skipped
+    (incident not found, or it already has a root cause).
+
+    "Unable to determine..." style answers are NOT saved as root_cause /
+    resolution (they stay NULL), and the confidence becomes 'unknown'.
+    Otherwise those placeholder sentences would later show up as "fixes"
+    when you search for similar past incidents.
+    """
+    if is_undetermined(root_cause):
+        root_cause = None
+    if is_undetermined(solution):
+        solution = None
+
+    db_confidence = map_confidence(confidence, root_cause)
+
+    with get_connection() as cur:
+        cur.execute(
+            SAVE_REPORT_SQL,
+            (symptoms, root_cause, solution, db_confidence, evidence, incident_id),
+        )
+        return cur.rowcount == 1
