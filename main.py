@@ -4,9 +4,10 @@ from pydantic import BaseModel
 from groq import Groq
 from dotenv import load_dotenv
 import os
+import re
 import json
 from datetime import datetime
-from db import collect_error_rate_evidence, fetch_latency_spike, fetch_new_error_type, parse_report, save_investigation_result
+from db import collect_error_rate_evidence, fetch_latency_spike,parse_report, fetch_new_error_type, save_investigation_result
 
 
 # save_investigation_result(
@@ -41,12 +42,7 @@ class InvestigationState(BaseModel):
 
 
 
-def save_report(state: InvestigationState) -> dict:
-    save_investigation_result(
-        state.incident_id, state.symptoms, state.root_cause,
-        state.solution, state.evidence_summary, state.confidence,
-    )
-    return {}
+
 
 
 # First node
@@ -120,6 +116,7 @@ Confidence:
 
 
 
+
 # 2. Fixed node signature: accepts only `state` and returns a dict state update
 def summerize_llm(state: InvestigationState) -> dict:
     logs = state.evidence  # Extract evidence directly from graph state
@@ -151,19 +148,26 @@ def summerize_llm(state: InvestigationState) -> dict:
 
     text = response.choices[0].message.content
     p = parse_report(text)
-
+    
 
 
     return {
-    "report": text,
-    "symptoms": p["symptoms"],
-    "root_cause": p["root_cause"],
-    "solution": p["solution"],
-    "evidence_summary": p["evidence"],
-    "confidence": p["confidence"],
+        "report": text,
+        "symptoms": p.get("symptoms"),
+        "root_cause": p.get("root_cause"),
+        "solution": p.get("solution"),
+        "evidence_summary": p.get("evidence"),
+        "confidence": p.get("confidence"),
     }
 
 
+
+def save_report(state: InvestigationState) -> dict:
+    save_investigation_result(
+        state.incident_id, state.symptoms, state.root_cause,
+        state.solution, state.evidence_summary, state.confidence,
+    )
+    return {}
 
 
 # Graph Definition
@@ -171,10 +175,12 @@ graph = StateGraph(InvestigationState)
 
 graph.add_node("find_log_node", find_log)
 graph.add_node("summerize_llm_node", summerize_llm)
+graph.add_node("save_report_node",save_report)
 
 graph.set_entry_point("find_log_node")
 graph.add_edge("find_log_node", "summerize_llm_node")
-graph.add_edge("summerize_llm_node", END)
+graph.add_edge("summerize_llm_node", "save_report_node")
+graph.add_edge("save_report_node", END)
 
 app = graph.compile()
 
@@ -190,7 +196,9 @@ initial_state = InvestigationState(
 final_state = app.invoke(initial_state)
 
 # Printed report output
-print(final_state["report"])
+print(final_state)
+
+print(final_state['report'])
 
 
 

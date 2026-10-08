@@ -732,7 +732,6 @@ _SECTION_RE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
-
 def parse_report(text):
     """
     Splits the LLM report into its five sections.
@@ -798,9 +797,11 @@ SAVE_REPORT_SQL = """
         root_cause = %s,
         resolution = %s,
         resolution_confidence = %s,
-        evidence = %s
+        evidence = %s,
+        status = CASE WHEN %s THEN 'resolved' ELSE status END,
+        resolved_at = CASE WHEN %s THEN COALESCE(resolved_at, now()) ELSE resolved_at END
     WHERE id = %s
-      AND root_cause IS NULL;   -- never overwrite a root cause someone already wrote
+      AND (root_cause IS NULL OR resolution_confidence = 'unknown');
 """
 
 
@@ -812,26 +813,15 @@ def save_investigation_result(
     evidence=None,
     confidence=None,
 ):
-    """
-    Saves the LLM investigation result on the incident row.
-    Returns True if the row was updated, False if it was skipped
-    (incident not found, or it already has a root cause).
+    undetermined = is_undetermined(root_cause) or is_undetermined(solution)
+    db_confidence = "unknown" if undetermined else map_confidence(confidence, root_cause)
 
-    "Unable to determine..." style answers are NOT saved as root_cause /
-    resolution (they stay NULL), and the confidence becomes 'unknown'.
-    Otherwise those placeholder sentences would later show up as "fixes"
-    when you search for similar past incidents.
-    """
-    if is_undetermined(root_cause):
-        root_cause = None
-    if is_undetermined(solution):
-        solution = None
-
-    db_confidence = map_confidence(confidence, root_cause)
+    close = db_confidence != "unknown"   # real root cause + real solution found
 
     with get_connection() as cur:
         cur.execute(
             SAVE_REPORT_SQL,
-            (symptoms, root_cause, solution, db_confidence, evidence, incident_id),
+            (symptoms, root_cause, solution, db_confidence, evidence,
+             close, close, incident_id),
         )
         return cur.rowcount == 1
