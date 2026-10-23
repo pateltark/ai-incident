@@ -825,3 +825,93 @@ def save_investigation_result(
              close, close, incident_id),
         )
         return cur.rowcount == 1
+
+
+
+
+# ======================= Similar Incidents =====================================
+
+SIMILAR_MIN_SIMILARITY = 0.75   # below this, a match is treated as "no match"
+
+
+def _to_pgvector(vec):
+    """List of floats -> pgvector text '[0.1,0.2,...]'. A string is passed through."""
+    if isinstance(vec, str):
+        return vec
+    return "[" + ",".join(f"{float(x):.6f}" for x in vec) + "]"
+
+
+def get_incident_embedding(incident_id):
+    """Returns (embedding_text, service_name) for an incident, or (None, None)."""
+    with get_connection() as cur:
+        cur.execute(
+            """
+            SELECT i.embedding::text, s.name
+            FROM public.incidents AS i
+            JOIN public.services AS s ON s.id = i.service_id
+            WHERE i.id = %s;
+            """,
+            (incident_id,),
+        )
+        row = cur.fetchone()
+    return (row[0], row[1]) if row else (None, None)
+
+
+def find_similar_incidents(
+    embedding,
+    service_name,
+    exclude_incident_id=None,
+    limit=3,
+    min_similarity=SIMILAR_MIN_SIMILARITY,
+    only_confirmed=True,
+):
+    """
+    embedding: the new incident's vector (list of floats, or pgvector text).
+    Returns past RESOLVED incidents of the same service, most similar first:
+      {incident_id, similarity, signature_text, root_cause, resolution, verified}
+    """
+    if embedding is None:
+        return []
+
+    vec = _to_pgvector(embedding)
+    levels = ["confirmed"] if only_confirmed else ["confirmed", "inferred"]
+
+    with get_connection() as cur:
+        cur.execute(
+            """
+            SELECT i.id,
+                   1 - (i.embedding <=> %s::vector) AS similarity,
+                   i.signature_text,
+                   i.root_cause,
+                   i.resolution,
+                   i.resolution_confidence
+            FROM public.incidents AS i
+            JOIN public.services AS s ON s.id = i.service_id
+            WHERE s.name = %s
+              AND i.status = 'resolved'
+              AND i.embedding IS NOT NULL
+              AND i.signature_text IS NOT NULL
+              AND i.root_cause IS NOT NULL
+              AND i.resolution IS NOT NULL
+              AND i.resolution_confidence = ANY(%s)
+              AND (%s::int IS NULL OR i.id <> %s::int)
+            ORDER BY i.embedding <=> %s::vector
+            LIMIT %s;
+            """,
+            (vec, service_name, levels,
+             exclude_incident_id, exclude_incident_id, vec, limit),
+        )
+        rows = cur.fetchall()
+
+    return [
+        {
+            "incident_id": r[0],
+            "similarity": round(float(r[1]), 2),
+            "signature_text": r[2],
+            "root_cause": r[3],
+            "resolution": r[4],
+            "verified": r[5],          # "confirmed" or "inferred"
+        }
+        for r in rows
+        if r[1] is not None and float(r[1]) >= min_similarity
+    ]

@@ -14,7 +14,7 @@ the root cause / fix, it saves them and closes the row) and an
 closes the ones that have gone quiet - the same "did the signal stop"
 logic your V4 resolution watcher will eventually run on a schedule.
 
-NEW in this version: SIGNATURE TEXT.
+SIGNATURE TEXT.
 When an incident opens, we automatically build a "signature" from the
 logs (no human description, no LLM needed):
     service: payment
@@ -27,16 +27,25 @@ and save it on the incident (`signature_text`) together with the raw
 template counts (`log_templates`, jsonb). This is what you will embed
 and search on later to find similar, already-solved incidents.
 
+NEW in this version: DRAIN3 TEMPLATES.
+The templates are now produced by Drain3 (see drain_templates.py) instead
+of the hand-made regex masking. Drain groups similar log lines into one
+template, e.g. "Payment failed for user <NUM> txn_<ID>" (x80).
+Raw logs stay untouched in application_logs.
+
 EMBEDDING: right after the signature is saved, the incident's templates
-are turned into a clean embed text (build_embed_text) and embedded with
+are turned into a clean embed text and embedded (embedder.py) with
 sentence-transformers; the vector goes into `incidents.embedding`.
-Set EMBED_MODEL in .env to use another model (default all-MiniLM-L6-v2,
-384 dimensions - your `embedding` column must match that size).
-    pip install sentence-transformers
+One incident = one text = one vector.
+Default model all-MiniLM-L6-v2, 384 dimensions - your `embedding` column
+must match that size.
 
 Setup:
-    pip install psycopg2-binary python-dotenv sentence-transformers
+    pip install psycopg2-binary python-dotenv sentence-transformers drain3
     (uses the same .env as before: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)
+
+Files needed in the same folder:
+    console.py, drain_templates.py, embedder.py
 
 Run:
     python console.py
@@ -56,6 +65,9 @@ from collections import Counter
 
 import psycopg2
 from dotenv import load_dotenv
+
+from drain_templates import cluster_logs, show_clusters
+from embedder import embed_incident
 
 # ---------------------------------------------------------------------------
 # Fingerprinting - identical logic to fingerprint.py, inlined so this file
@@ -88,21 +100,21 @@ def fingerprint(message: str, length: int = 12) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Signature text - NEW
+# Signature text
 #
 # Turns the raw logs around an incident into a clean, human-readable
-# "signature" (masked templates + counts + first error). Same function is
+# "signature" (Drain templates + counts + first error). Same function is
 # used for every incident, old or new, so signatures stay comparable.
 # ---------------------------------------------------------------------------
 
-SIGNATURE_WINDOW_MINUTES = 15      # how far back from "incident opened" we look for logs
+SIGNATURE_WINDOW_MINUTES = 2     # how far back from "incident opened" we look for logs
 SIGNATURE_TOP_TEMPLATES = 5        # how many templates go into the signature text
 SIGNATURE_STORE_TEMPLATES = 50     # how many templates (with counts) go into the jsonb column
 SIGNATURE_MAX_LOGS = 5000          # safety cap on rows pulled per incident
 FIRST_ERROR_MAX_CHARS = 200
 
-# These differ from normalize() above on purpose: they keep the original
-# casing (readable text) and use <NUM>/<ID>/<IP>/<TS> placeholders.
+# mask_log() below is no longer used for the signature (Drain does that now).
+# It is kept only for the `mask` console command, handy to compare regex masking vs Drain.
 # Look-arounds are used instead of \b so ids glued to '_' or '=' still match
 # (e.g. txn_8f3a9c01d2, req_id=a81f...).
 _SIG_TS_RE = re.compile(
@@ -154,7 +166,8 @@ def build_signature(service_name, error_type, rows, top_n=SIGNATURE_TOP_TEMPLATE
         )
         return text, {}
 
-    templates = Counter(mask_log(msg) for msg, _ in rows)
+    # Drain3: many raw logs -> a few templates with counts (Counter: template -> count)
+    templates = cluster_logs(service_name, [msg for msg, _ in rows])
     top = templates.most_common(top_n)
 
     # first error = earliest ERROR line; fall back to the earliest line of any level
@@ -168,16 +181,6 @@ def build_signature(service_name, error_type, rows, top_n=SIGNATURE_TOP_TEMPLATE
     lines.append(f"first_error: {first_raw}")
 
     return "\n".join(lines), dict(templates.most_common(SIGNATURE_STORE_TEMPLATES))
-
-
-def build_embed_text(service_name, error_type, templates):
-    """
-    The cleaner text you should actually EMBED later: no counts, no field
-    labels, no service_id (use service_id as a SQL filter instead).
-    `templates` is the dict stored in incidents.log_templates.
-    """
-    top = sorted(templates, key=templates.get, reverse=True)[:SIGNATURE_TOP_TEMPLATES]
-    return f"{error_type} {service_name}\n" + "\n".join(top)
 
 
 def fetch_signature_logs(conn, service_id, window_minutes=SIGNATURE_WINDOW_MINUTES):
@@ -220,47 +223,22 @@ SAVE_SIGNATURE_SQL = """
 
 
 # --- embeddings -------------------------------------------------------------
-# The model runs right here in this file - nothing to put in .env.
-# The first time it is used, sentence-transformers downloads it automatically
-# (about 90 MB, one time only) and caches it on your machine.
-# This model gives 384 numbers per vector, so incidents.embedding must be vector(384).
-# If you change the model, change the column size to match
-# (all-mpnet-base-v2 = 768).
-EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-_EMBEDDER = None
-
-
-def get_embedder():
-    """Loads the model once (first use is slow, later calls are instant)."""
-    global _EMBEDDER
-    if _EMBEDDER is None:
-        from sentence_transformers import SentenceTransformer
-        print(f"  (loading embedding model {EMBED_MODEL_NAME} ...)")
-        _EMBEDDER = SentenceTransformer(EMBED_MODEL_NAME)
-    return _EMBEDDER
-
-
-def embed_text(text):
-    """Text -> list of floats. Normalized so cosine distance (<=>) works well."""
-    vec = get_embedder().encode(text, normalize_embeddings=True)
-    return [float(x) for x in vec]
-
+# The text -> vector code lives in embedder.py. This file only writes the
+# result into incidents.embedding (the column must be vector(384)).
 
 def save_embedding(conn, incident_id, service_name, rule, templates):
     """
-    Embeds the CLEAN text (build_embed_text: no counts, no labels, no service_id),
-    not the full signature_text, and saves it in incidents.embedding.
+    Drain templates -> embed text -> vector (embedder.py), then save the
+    vector in incidents.embedding. Returns the embedded text.
     """
-    text = build_embed_text(service_name, rule, templates)
-    vec = embed_text(text)
-    vec_literal = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"  # pgvector text format
+    text, vec_literal = embed_incident(service_name, rule, templates)
     with conn.cursor() as cur:
         cur.execute(
             "UPDATE incidents SET embedding = %s::vector WHERE id = %s;",
             (vec_literal, incident_id),
         )
     conn.commit()
-    return len(vec)
+    return text
 
 
 def store_signature(conn, incident_id, service_id, service_name, rule):
@@ -279,8 +257,10 @@ def store_signature(conn, incident_id, service_id, service_name, rule):
     # Embedding is a separate step: if the model or the column dimension is
     # wrong, the signature above is already saved and the incident still opens.
     try:
-        dims = save_embedding(conn, incident_id, service_name, rule, templates)
-        print(f"      embedding saved ({dims} dims)")
+        embedded_text = save_embedding(conn, incident_id, service_name, rule, templates)
+        print("      embedding saved. text that was embedded:")
+        for emb_line in embedded_text.splitlines():
+            print(f"        {emb_line}")
     except Exception as e:
         conn.rollback()
         print(f"  (could not save embedding for incident {incident_id}: {e})")
@@ -348,7 +328,7 @@ KNOWN_SERVICES = ["checkout", "payment", "auth", "inventory"]
 
 
 def ensure_schema(conn):
-    """Adds the two new columns if they aren't there yet (safe to run every start)."""
+    """Adds the new columns if they aren't there yet (safe to run every start)."""
     with conn.cursor() as cur:
         cur.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS signature_text text;")
         cur.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS log_templates jsonb;")
@@ -532,16 +512,17 @@ def try_open_incident(conn, service_id, service_name, rule, fp, title, descripti
         cur.execute(OPEN_INCIDENT_SQL, (service_id, rule, fp, title, description, severity))
         row = cur.fetchone()
     conn.commit()
-    
+
     if row is None:
         print(f"  (already open: an incident for {service_name}/{fp} exists - no duplicate)")
         return None
-    
+
     incident_id = row[0]
     print(f"  >>> INCIDENT OPENED  id={incident_id}  rule={rule}  severity={severity}  fingerprint={fp}")
     print(f"      {description}")
 
-    # NEW: build the signature text from the logs and save it on the incident.
+    # Build the signature text (Drain templates) from the logs and save it on
+    # the incident, plus its embedding.
     # Done BEFORE the callbacks so agents already get it in the alert payload.
     # If it fails, the incident stays open - the signature is an add-on, not a blocker.
     signature_text = None
@@ -656,7 +637,7 @@ def close_incident(conn, incident_id, root_cause, resolution=None, confidence="c
         print(f"  incident {incident_id} isn't open (already resolved, or doesn't exist)")
         return False
     print(f"  >>> INCIDENT RESOLVED  id={result[0]}  \"{result[1]}\"")
-    print("      root cause and resolution saved - embedding can be added later once you wire that up")
+    print("      root cause and resolution saved")
     return True
 
 
@@ -762,6 +743,7 @@ Commands:
   check [service]                     manually run detection (all services, or just one)
   incidents                           list all incidents
   signature <id>                      show the saved signature text + template counts of an incident
+  templates <service>                 show the Drain templates learned for a service
   resolve <id>                        manually close an incident - asks you for the root cause,
                                        then sets status=resolved
   autoclose [minutes]                 check every open incident's condition; close the ones that
@@ -769,7 +751,7 @@ Commands:
   logs <service> [n]                  show the last n logs for a service (default 10)
   services                            list known services
   fp <message...>                     show what fingerprint a message normalizes/hashes to
-  mask <message...>                   show what the signature masking turns a message into
+  mask <message...>                   show what the old regex masking turns a message into
   help                                show this again
   quit / exit                         stop
 
@@ -782,6 +764,7 @@ Examples:
   check
   incidents
   signature 3
+  templates payment
   resolve 3
   autoclose
   autoclose 5
@@ -819,6 +802,16 @@ def cmd_signature(conn, incident_id):
     for line in signature_text.splitlines():
         print(f"    {line}")
     print(f"  log_templates: {len(log_templates or {})} distinct template(s) stored")
+
+
+def cmd_templates(service_name):
+    """Shows what Drain has learned so far for this service (in memory, this session)."""
+    rows = show_clusters(service_name)
+    if not rows:
+        print("  (no templates learned yet for this service - they appear after an incident opens)")
+        return
+    for cid, size, template in rows[:20]:
+        print(f"  cluster {cid:<4} x{size:<5} {template}")
 
 
 def cmd_resolve(conn, incident_id):
@@ -941,6 +934,12 @@ def repl():
                     print("  usage: signature <id>")
                     continue
                 cmd_signature(conn, int(rest[0]))
+
+            elif cmd == "templates":
+                if not rest:
+                    print("  usage: templates <service>")
+                    continue
+                cmd_templates(rest[0])
 
             elif cmd == "resolve":
                 if not rest:

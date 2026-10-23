@@ -7,8 +7,9 @@ import os
 import re
 import json
 from datetime import datetime
-from db import collect_error_rate_evidence, fetch_latency_spike,parse_report, fetch_new_error_type, save_investigation_result
-
+from db import (collect_error_rate_evidence, fetch_latency_spike, parse_report,
+                fetch_new_error_type, save_investigation_result,
+                get_incident_embedding, find_similar_incidents)
 
 # save_investigation_result(
 #     state.incident_id, state.symptoms, state.root_cause,
@@ -30,6 +31,7 @@ class InvestigationState(BaseModel):
     resolved_at: Optional[datetime] = None
     error_rate: Optional[float] = None
     new_error_type: Optional[str] = None
+    similar_incidents: Optional[list] = None
     evidence: Optional[dict] = None
     report: Optional[str] = None  # Added field to store the generated LLM report
 
@@ -115,6 +117,17 @@ Confidence:
 """
 
 
+# Retriver Node
+
+def find_similar(state: InvestigationState) -> dict:
+    embedding, service_name = get_incident_embedding(state.incident_id)
+    similar = find_similar_incidents(
+        embedding, service_name, exclude_incident_id=state.incident_id
+    )
+    print(f"similar incidents found: {len(similar)}")
+    return {"similar_incidents": similar}
+
+
 
 
 # 2. Fixed node signature: accepts only `state` and returns a dict state update
@@ -174,11 +187,13 @@ def save_report(state: InvestigationState) -> dict:
 graph = StateGraph(InvestigationState)
 
 graph.add_node("find_log_node", find_log)
+graph.add_node("find_similar_node", find_similar)
 graph.add_node("summerize_llm_node", summerize_llm)
 graph.add_node("save_report_node",save_report)
 
 graph.set_entry_point("find_log_node")
-graph.add_edge("find_log_node", "summerize_llm_node")
+graph.add_edge("find_log_node", "find_similar_node")
+graph.add_edge("find_similar_node", "summerize_llm_node")
 graph.add_edge("summerize_llm_node", "save_report_node")
 graph.add_edge("save_report_node", END)
 
@@ -199,40 +214,3 @@ final_state = app.invoke(initial_state)
 print(final_state)
 
 print(final_state['report'])
-
-
-
-# def handle_incident_opened_event(alert_data: Dict[str, Any]):
-#     """Automatically triggered in-memory when an incident opens."""
-#     print(f"\n[Agent Triggered] Investigating new incident ID {alert_data['incident_id']} on service '{alert_data['service_name']}'...")
-    
-#     # Construct state directly from the event
-#     initial_state: InvestigationState = {
-#         "user_question": f"Investigate active incident #{alert_data['incident_id']} for service '{alert_data['service_name']}'. Rule triggered: {alert_data['rule']}. Description: {alert_data['description']}",
-#         "service_name": alert_data["service_name"],
-#         "alert": alert_data,
-#         "logs": [],
-#         "incidents": [],
-#         "slow_requests": [],
-#         "analysis": None
-#     }
-
-#     # Execute LangGraph investigation automatically
-#     final_state = app.invoke(initial_state)
-#     print("\n--- [AUTOMATED AGENT REPORT] ---")
-#     print(final_state.get("analysis"))
-#     print("----------------------------------\n")
-
-
-# initial_state: InvestigationState = {
-#     "user_question": "What is the error in payment service ?",
-#     "service_name": None,  # Corrected from [] to None
-#     "logs": [],
-#     "incidents": [],
-#     "slow_requests": [],
-#     "analysis": None
-# }
-
-# final_state = app.invoke(initial_state)
-
-# print("\nAnalysis:\n", final_state.get("analysis"))
