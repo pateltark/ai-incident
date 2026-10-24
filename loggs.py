@@ -62,13 +62,14 @@ import statistics
 import sys
 import uuid
 from collections import Counter
-
+import threading
+import time
 import psycopg2
 from dotenv import load_dotenv
 
 from drain_templates import cluster_logs, show_clusters
 from embedder import embed_incident
-
+from main import handle_incident_opened 
 # ---------------------------------------------------------------------------
 # Fingerprinting - identical logic to fingerprint.py, inlined so this file
 # has no dependency on the others.
@@ -612,6 +613,23 @@ def check_all(conn):
         print("  no incidents opened (quiet across all services)")
 
 
+
+def watcher_loop(interval_seconds=30):
+    """Runs the detector on every service, forever. Own connection: a psycopg2
+    connection must not be shared between threads."""
+    conn = connect()
+    while True:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, name FROM services;")
+                services = cur.fetchall()
+            for service_id, service_name in services:
+                check_service(conn, service_id, service_name, quiet_if_nothing=True)
+        except Exception as e:
+            conn.rollback()
+            print(f"[watcher] error: {e}")
+        time.sleep(interval_seconds)
+
 # ---------------------------------------------------------------------------
 # Resolving / closing
 # ---------------------------------------------------------------------------
@@ -864,6 +882,10 @@ def repl():
     conn = connect()
     ensure_schema(conn)
     ensure_services(conn)
+
+    register_on_incident_opened(handle_incident_opened)
+    threading.Thread(target=watcher_loop, args=(30,), daemon=True).start()
+    print("[console] watcher started (checks every 30s), agent registered")
     print("[console] connected. Type 'help' for commands, 'quit' to exit.\n")
 
     while True:

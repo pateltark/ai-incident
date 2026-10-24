@@ -10,6 +10,8 @@ from datetime import datetime
 from db import (collect_error_rate_evidence, fetch_latency_spike, parse_report,
                 fetch_new_error_type, save_investigation_result,
                 get_incident_embedding, find_similar_incidents)
+from db import get_connection
+import threading
 
 # save_investigation_result(
 #     state.incident_id, state.symptoms, state.root_cause,
@@ -229,17 +231,64 @@ graph.add_edge("save_report_node", END)
 app = graph.compile()
 
 
-initial_state = InvestigationState(
-    incident_id=33,                      # the id printed by seed_db.py ("new incident id = ...")
-    service_name="seedtest",
-    rule="error_rate",
-    fingerprint="970324fec6bf",              # fingerprint of "elevated_error_rate:seedtest"
-    started_at=datetime.fromisoformat("2026-10-24 05:50:43.227150+00:00"),    
-)
+# initial_state = InvestigationState(
+#     incident_id=33,                      # the id printed by seed_db.py ("new incident id = ...")
+#     service_name="seedtest",
+#     rule="error_rate",
+#     fingerprint="970324fec6bf",              # fingerprint of "elevated_error_rate:seedtest"
+#     started_at=datetime.fromisoformat("2026-10-24 05:50:43.227150+00:00"),    
+# )
 
-final_state = app.invoke(initial_state)
+# final_state = app.invoke(initial_state)
 
-# Printed report output
-print(final_state)
+# # Printed report output
+# print(final_state)
 
-print(final_state['report'])
+# print(final_state['report'])
+
+
+
+
+def load_state(incident_id: int) -> InvestigationState:
+    """Builds the state from the incidents table, so nothing is typed by hand."""
+    with get_connection() as cur:
+        cur.execute(
+            """
+            SELECT s.name, i.rule, i.fingerprint, i.started_at, i.resolved_at
+            FROM public.incidents i JOIN public.services s ON s.id = i.service_id
+            WHERE i.id = %s;
+            """,
+            (incident_id,),
+        )
+        name, rule, fp, started_at, resolved_at = cur.fetchone()
+    return InvestigationState(
+        incident_id=incident_id, service_name=name, rule=rule,
+        fingerprint=fp, started_at=started_at, resolved_at=resolved_at,
+    )
+
+
+def investigate(incident_id: int) -> dict:
+    return app.invoke(load_state(incident_id))
+
+
+def handle_incident_opened(alert: dict):
+    """Called by console.py when an incident opens. Runs in a background thread
+    so the console doesn't freeze while the LLM works."""
+    incident_id = alert["incident_id"]
+
+    def run():
+        try:
+            print(f"\n[agent] investigating incident {incident_id} "
+                  f"({alert['service_name']}/{alert['rule']}) ...")
+            final = investigate(incident_id)
+            print(f"\n===== INCIDENT REPORT (incident {incident_id}) =====\n"
+                  f"{final['report']}\n=====\n")
+        except Exception as e:
+            print(f"\n[agent] investigation of incident {incident_id} failed: {e}\n")
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+if __name__ == "__main__":          # python agent.py -> test one incident by hand
+    final_state = investigate(33)
+    print(final_state["report"])
