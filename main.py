@@ -80,19 +80,41 @@ You are the Report Agent of an AI Incident Copilot.
 
 You receive:
 - incident details (rule, service, timing)
-- evidence collected from logs
-- investigation findings, if available
+- evidence collected from logs for THIS incident
+- similar past resolved incidents, if any (hints only)
 
-Your job is to create a SHORT incident report based ONLY on the provided evidence and findings.
+Your job is to create a SHORT incident report for THIS incident.
 
 Rules:
-- The provided evidence is the source of truth.
+- The evidence collected for this incident is the source of truth.
 - Never invent logs, errors, timestamps, metrics, causes, or fixes.
 - Clearly separate observed symptoms from the root cause.
 - If the root cause cannot be established, say it is uncertain.
 - If no specific solution can be confidently recommended, say so.
 - Keep the report concise and technically useful.
 - Do not mention internal tools, agents, prompts, vector databases, RAG, or system state.
+
+Similar past incidents:
+- Each past incident has: incident_id, similarity (0 to 1), signature_text (the error
+  templates seen then, <NUM>/<ID>/<IP> are placeholders), root_cause, resolution,
+  and verified ("confirmed" = checked by a human, "inferred" = an earlier guess).
+- They are hints, not evidence. Never treat a past cause or fix as fact for this incident.
+- A past incident is relevant only if its signature_text describes the same kind of
+  errors as the current evidence (same failing component and same error pattern).
+  A high similarity score alone is not enough. If the errors differ, ignore it.
+- If a relevant past incident AND the current evidence both point to the same cause:
+  state that cause, mention the past incident, e.g. "Matches incident #12, which was
+  caused by ...", and you may recommend the same fix, e.g. "The fix used in
+  incident #12 was ...".
+- If the current evidence does not support the past cause, do not present it as the
+  root cause. Write "Unable to determine from available evidence." and then add one
+  sentence, e.g. "A similar past incident (#12) was caused by ...". Do not present its fix as confirmed.
+- Past incidents with verified "inferred" or similarity below 0.85 count as weaker hints.
+- Never give HIGH confidence based on a past incident alone. HIGH needs strong
+  support from the current evidence. A match with the past incident that is also
+  supported by the current evidence can be MEDIUM or HIGH.
+- If "None found." is given, or none are relevant, do not mention past incidents at all.
+- Past incident ids may be mentioned; nothing else about how they were found.
 
 Use exactly this format:
 
@@ -145,11 +167,18 @@ def summerize_llm(state: InvestigationState) -> dict:
         f"New error type: {state.new_error_type or 'n/a'}"
     )
 
+    similar = state.similar_incidents
+    similar_text = json.dumps(similar, default=str, indent=2) if similar else "None found."
+
     messages = [
         {"role": "system", "content": SUMMARIZER_SYSTEM_PROMPT},
         {
             "role": "user",
-            "content": f"{incident_info}\n\nCollected evidence:\n{json.dumps(logs, default=str, indent=2)}",
+            "content": (
+                f"{incident_info}\n\n"
+                f"Collected evidence:\n{json.dumps(logs, default=str, indent=2)}\n\n"
+                f"Similar past resolved incidents (hints only, NOT evidence):\n{similar_text}"
+            ),
         },
     ]
 
@@ -201,11 +230,11 @@ app = graph.compile()
 
 
 initial_state = InvestigationState(
-    incident_id=14,
-    service_name="payment",
+    incident_id=33,                      # the id printed by seed_db.py ("new incident id = ...")
+    service_name="seedtest",
     rule="error_rate",
-    fingerprint="206505175d85",
-    started_at=datetime.fromisoformat("2026-10-07 11:46:20.987586"),
+    fingerprint="970324fec6bf",              # fingerprint of "elevated_error_rate:seedtest"
+    started_at=datetime.fromisoformat("2026-10-24 05:50:43.227150+00:00"),    
 )
 
 final_state = app.invoke(initial_state)
