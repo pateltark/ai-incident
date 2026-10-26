@@ -1,5 +1,4 @@
-
-# ingestion.py
+# connector_layer.py (Continuous Version)
 
 import os
 import re
@@ -14,10 +13,11 @@ load_dotenv()
 SOURCE = os.getenv("LOG_SOURCE", "local").lower()
 SERVICE_NAME = os.getenv("SERVICE_NAME", "my-service")
 LOCAL_LOG_FILE = os.getenv("LOCAL_LOG_FILE", "app.log")
+POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "3"))  # Check for new logs every 3 seconds
 
 AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
 LOG_GROUP = os.getenv("CLOUDWATCH_LOG_GROUP", "")
-LOOKBACK_MINUTES = int(os.getenv("LOOKBACK_MINUTES", "60"))
+LOOKBACK_MINUTES = int(os.getenv("LOOKBACK_MINUTES", "5"))
 
 
 def get_db_connection():
@@ -65,7 +65,6 @@ def get_level(message):
 
 def save_logs(logs):
     if not logs:
-        print("No logs found.")
         return
 
     conn = get_db_connection()
@@ -90,7 +89,7 @@ def save_logs(logs):
                 )
 
         conn.commit()
-        print(f"Saved {len(logs)} logs to application_logs.")
+        print(f"Saved {len(logs)} new log(s) to application_logs.")
 
     except Exception:
         conn.rollback()
@@ -100,44 +99,45 @@ def save_logs(logs):
         conn.close()
 
 
-def fetch_local_logs():
+def tail_local_logs(file_handle):
+    """Reads newly appended lines from the open local file handle."""
     logs = []
+    while True:
+        line = file_handle.readline()
+        if not line:
+            break
+        
+        message = line.rstrip("\r\n")
+        if message:
+            timestamp = datetime.now(timezone.utc)
+            try:
+                candidate = message[:26].strip().replace("Z", "+00:00")
+                timestamp = datetime.fromisoformat(candidate)
 
-    with open(LOCAL_LOG_FILE, "r", encoding="utf-8", errors="replace") as file:
-        for line in file:
-            message = line.rstrip("\r\n")
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
 
-            if message:
-                # Use current time if the log's timestamp cannot be parsed.
-                timestamp = datetime.now(timezone.utc)
+            except ValueError:
+                pass
 
-                try:
-                    candidate = message[:26].strip().replace("Z", "+00:00")
-                    timestamp = datetime.fromisoformat(candidate)
-
-                    if timestamp.tzinfo is None:
-                        timestamp = timestamp.replace(tzinfo=timezone.utc)
-
-                except ValueError:
-                    pass
-
-                logs.append((message, timestamp))
-
+            logs.append((message, timestamp))
+            
     return logs
 
 
-def fetch_cloudwatch_logs():
+def fetch_cloudwatch_logs(last_timestamp_ms):
+    """Fetches CloudWatch logs newer than the last processed timestamp."""
     if not LOG_GROUP:
         raise ValueError("Set CLOUDWATCH_LOG_GROUP in your .env file.")
 
     client = boto3.client("logs", region_name=AWS_REGION)
 
     end_ms = int(time.time() * 1000)
-    start_ms = end_ms - LOOKBACK_MINUTES * 60 * 1000
+    start_ms = last_timestamp_ms if last_timestamp_ms else (end_ms - LOOKBACK_MINUTES * 60 * 1000)
 
     paginator = client.get_paginator("filter_log_events")
-
     logs = []
+    max_ts = last_timestamp_ms
 
     for page in paginator.paginate(
         logGroupName=LOG_GROUP,
@@ -145,25 +145,54 @@ def fetch_cloudwatch_logs():
         endTime=end_ms,
     ):
         for event in page.get("events", []):
+            evt_time = event["timestamp"]
+            if last_timestamp_ms and evt_time <= last_timestamp_ms:
+                continue
+
             timestamp = datetime.fromtimestamp(
-                event["timestamp"] / 1000,
+                evt_time / 1000,
                 tz=timezone.utc,
             )
 
-            # Save the original CloudWatch message.
             logs.append((event["message"], timestamp))
+            if not max_ts or evt_time > max_ts:
+                max_ts = evt_time
 
-    return logs
+    return logs, max_ts
 
 
 if __name__ == "__main__":
-    if SOURCE == "local":
-        raw_logs = fetch_local_logs()
+    print(f"Starting continuous log ingestion script for source: [{SOURCE}]...")
+    
+    try:
+        if SOURCE == "local":
+            if not os.path.exists(LOCAL_LOG_FILE):
+                open(LOCAL_LOG_FILE, "a").close() # Create file if missing
 
-    elif SOURCE == "cloudwatch":
-        raw_logs = fetch_cloudwatch_logs()
+            with open(LOCAL_LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+                # Move pointer to the end of the file so it only tails live incoming lines
+                # (Change to f.seek(0) if you want it to process existing file history first)
+                f.seek(0, os.SEEK_END)
+                print(f"Tailing '{LOCAL_LOG_FILE}'. Press Ctrl+C to stop.")
 
-    else:
-        raise ValueError("LOG_SOURCE must be 'local' or 'cloudwatch'.")
+                while True:
+                    new_logs = tail_local_logs(f)
+                    if new_logs:
+                        save_logs(new_logs)
+                    time.sleep(POLL_INTERVAL)
 
-    save_logs(raw_logs)
+        elif SOURCE == "cloudwatch":
+            print(f"Polling CloudWatch log group '{LOG_GROUP}'. Press Ctrl+C to stop.")
+            last_ts = int((time.time() - LOOKBACK_MINUTES * 60) * 1000)
+            
+            while True:
+                new_logs, last_ts = fetch_cloudwatch_logs(last_ts)
+                if new_logs:
+                    save_logs(new_logs)
+                time.sleep(POLL_INTERVAL)
+
+        else:
+            raise ValueError("LOG_SOURCE must be 'local' or 'cloudwatch'.")
+
+    except KeyboardInterrupt:
+        print("\nLog ingestion stopped gracefully by user (Ctrl+C).")
