@@ -83,7 +83,6 @@ _HEX_RE = re.compile(r"\b(?=[0-9a-f]*[a-f])[0-9a-f]{6,}\b", re.IGNORECASE)
 _NUM_RE = re.compile(r"\b\d+\b")
 _WS_RE = re.compile(r"\s+")
 
-
 def normalize(message: str) -> str:
     text = message.lower().strip()
     text = _UUID_RE.sub("<uuid>", text)

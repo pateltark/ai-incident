@@ -13,10 +13,6 @@ from db import (collect_error_rate_evidence, fetch_latency_spike, parse_report,
 from db import get_connection
 import threading
 
-# save_investigation_result(
-#     state.incident_id, state.symptoms, state.root_cause,
-#     state.solution, state.evidence_summary, state.confidence,
-# )
 
 load_dotenv()
 
@@ -229,22 +225,6 @@ graph.add_edge("summerize_llm_node", "save_report_node")
 graph.add_edge("save_report_node", END)
 
 app = graph.compile()
-
-
-# initial_state = InvestigationState(
-#     incident_id=33,                      # the id printed by seed_db.py ("new incident id = ...")
-#     service_name="seedtest",
-#     rule="error_rate",
-#     fingerprint="970324fec6bf",              # fingerprint of "elevated_error_rate:seedtest"
-#     started_at=datetime.fromisoformat("2026-10-24 05:50:43.227150+00:00"),    
-# )
-
-# final_state = app.invoke(initial_state)
-
-# # Printed report output
-# print(final_state)
-
-# print(final_state['report'])
 
 
 
