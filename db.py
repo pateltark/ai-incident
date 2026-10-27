@@ -535,8 +535,6 @@ def fetch_new_error_type(incident):
     }
 
 
-
-
 # ======================= Latency Spike =====================================
 
 LATENCY_SPIKE_MULT = 2.0      # same multiplier your detector uses
@@ -717,6 +715,7 @@ def fetch_latency_spike(incident):
 #   Confidence  -> resolution_confidence  ('inferred' or 'unknown', never 'confirmed')
 #
 # This does NOT close the incident: status and resolved_at are left alone.
+# Only a human closes an incident (see resolve_incident below).
 
 
 def ensure_report_columns():
@@ -801,7 +800,8 @@ SAVE_REPORT_SQL = """
         status = CASE WHEN %s THEN 'resolved' ELSE status END,
         resolved_at = CASE WHEN %s THEN COALESCE(resolved_at, now()) ELSE resolved_at END
     WHERE id = %s
-      AND (root_cause IS NULL OR resolution_confidence = 'unknown');
+      AND (root_cause IS NULL OR resolution_confidence <> 'confirmed')
+      AND status <> 'resolved';
 """
 
 
@@ -816,7 +816,7 @@ def save_investigation_result(
     undetermined = is_undetermined(root_cause) or is_undetermined(solution)
     db_confidence = "unknown" if undetermined else map_confidence(confidence, root_cause)
 
-    close = db_confidence != "unknown"   # real root cause + real solution found
+    close = False   # only a human closes incidents (see resolve_incident)
 
     with get_connection() as cur:
         cur.execute(
@@ -827,6 +827,63 @@ def save_investigation_result(
         return cur.rowcount == 1
 
 
+# ======================= Resolve Incident (human) =====================================
+#
+# The human closes the incident after fixing it:
+#   root_cause            -> typed by the user (main issue)
+#   resolution            -> typed by the user (how it was solved)
+#   resolution_confidence -> 'confirmed' (a human verified it)
+#   status                -> 'resolved'
+#   resolved_at           -> current time
+
+
+def get_incident(incident_id):
+    """Returns the incident row as a dict, or None."""
+    with get_connection() as cur:
+        cur.execute(
+            """
+            SELECT i.id, s.name, i.title, i.rule, i.status, i.severity,
+                   i.started_at, i.description, i.root_cause, i.resolution,
+                   i.resolution_confidence
+            FROM public.incidents i
+            JOIN public.services s ON s.id = i.service_id
+            WHERE i.id = %s;
+            """,
+            (incident_id,),
+        )
+        r = cur.fetchone()
+    if not r:
+        return None
+    keys = ["id", "service", "title", "rule", "status", "severity",
+            "started_at", "description", "root_cause", "resolution", "confidence"]
+    return dict(zip(keys, r))
+
+
+def resolve_incident(incident_id, root_cause, resolution):
+    """
+    Human closes the incident: stores root cause + fix, marks it resolved.
+    Overwrites any LLM guess. Returns True if an open incident was closed.
+    """
+    root_cause = (root_cause or "").strip()
+    resolution = (resolution or "").strip()
+    if not root_cause or not resolution:
+        raise ValueError("root_cause and resolution are both required")
+
+    with get_connection() as cur:
+        cur.execute(
+            """
+            UPDATE public.incidents
+            SET root_cause = %s,
+                resolution = %s,
+                resolution_confidence = 'confirmed',
+                status = 'resolved',
+                resolved_at = %s
+            WHERE id = %s
+              AND status <> 'resolved';
+            """,
+            (root_cause, resolution, datetime.now(), incident_id),
+        )
+        return cur.rowcount == 1
 
 
 # ======================= Similar Incidents =====================================
