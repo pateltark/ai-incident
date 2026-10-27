@@ -805,24 +805,21 @@ SAVE_REPORT_SQL = """
 """
 
 
-def save_investigation_result(
-    incident_id,
-    symptoms=None,
-    root_cause=None,
-    solution=None,
-    evidence=None,
-    confidence=None,
-):
-    undetermined = is_undetermined(root_cause) or is_undetermined(solution)
-    db_confidence = "unknown" if undetermined else map_confidence(confidence, root_cause)
-
-    close = False   # only a human closes incidents (see resolve_incident)
-
+def save_investigation_result(incident_id, symptoms=None, evidence=None):
+    """
+    Saves only the LLM output: Symptoms -> description, Evidence -> evidence.
+    Does not touch status, resolved_at, root_cause, resolution or
+    resolution_confidence. Those are written only by resolve_incident().
+    """
     with get_connection() as cur:
         cur.execute(
-            SAVE_REPORT_SQL,
-            (symptoms, root_cause, solution, db_confidence, evidence,
-             close, close, incident_id),
+            """
+            UPDATE public.incidents
+            SET description = COALESCE(%s, description),
+                evidence    = COALESCE(%s, evidence)
+            WHERE id = %s;
+            """,
+            (symptoms, evidence, incident_id),
         )
         return cur.rowcount == 1
 
@@ -871,18 +868,18 @@ def resolve_incident(incident_id, root_cause, resolution):
 
     with get_connection() as cur:
         cur.execute(
-            """
-            UPDATE public.incidents
-            SET root_cause = %s,
-                resolution = %s,
-                resolution_confidence = 'confirmed',
-                status = 'resolved',
-                resolved_at = %s
-            WHERE id = %s
-              AND status <> 'resolved';
-            """,
-            (root_cause, resolution, datetime.now(), incident_id),
-        )
+                """
+                UPDATE public.incidents
+                SET root_cause = %s,
+                    resolution = %s,
+                    resolution_confidence = 'confirmed',
+                    status = 'resolved',
+                    resolved_at = now()
+                WHERE id = %s
+                AND status <> 'resolved';
+                """,
+                (root_cause, resolution, incident_id),
+            )
         return cur.rowcount == 1
 
 

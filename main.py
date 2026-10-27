@@ -204,11 +204,11 @@ def summerize_llm(state: InvestigationState) -> dict:
 
 def save_report(state: InvestigationState) -> dict:
     save_investigation_result(
-        state.incident_id, state.symptoms, state.root_cause,
-        state.solution, state.evidence_summary, state.confidence,
+        state.incident_id,
+        symptoms=state.symptoms,
+        evidence=state.evidence_summary,
     )
     return {}
-
 
 # Graph Definition
 graph = StateGraph(InvestigationState)
