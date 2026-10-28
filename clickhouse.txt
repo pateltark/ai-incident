@@ -1,3 +1,5 @@
+CREATE DATABASE incident_copilot;
+ 
 -- CREATE TABLE incident_copilot.application_logs (
 --     id Int64,
 --     service_id Int32,

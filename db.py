@@ -6,8 +6,8 @@ from datetime import datetime, timedelta, timezone
 
 import psycopg2
 import psycopg2.pool
+import clickhouse_connect
 from dotenv import load_dotenv
-
 
 load_dotenv()
 
@@ -40,9 +40,10 @@ def fingerprint(message: str, length: int = 12) -> str:
 
 
 # --------------------------------------------------
-# DATABASE CONNECTION POOL
+# DATABASE CONNECTIONS (PostgreSQL + ClickHouse)
 # --------------------------------------------------
 
+# Postgres Pool for Incidents, Embeddings, Services Metadata
 connection_pool = psycopg2.pool.ThreadedConnectionPool(
     minconn=1,
     maxconn=int(os.getenv("DB_POOL_MAX", "10")),
@@ -53,16 +54,10 @@ connection_pool = psycopg2.pool.ThreadedConnectionPool(
     port=int(os.getenv("DB_PORT", "5432")),
 )
 
-
-# --------------------------------------------------
-# DATABASE CONNECTION
-# --------------------------------------------------
-
 @contextmanager
 def get_connection():
     conn = connection_pool.getconn()
     conn.autocommit = True
-
     try:
         with conn.cursor() as cursor:
             yield cursor
@@ -70,8 +65,17 @@ def get_connection():
         connection_pool.putconn(conn)
 
 
+# ClickHouse Client for incident_copilot.application_logs
+ch_client = clickhouse_connect.get_client(
+    host=os.getenv("CH_HOST", "localhost"),
+    port=int(os.getenv("CH_PORT", "8123")),
+    username=os.getenv("CH_USER", "default"),
+    password=os.getenv("CH_PASSWORD", ""),
+)
+
+
 # --------------------------------------------------
-# SERVICES
+# SERVICES (PostgreSQL)
 # --------------------------------------------------
 
 def get_service(service_name):
@@ -88,7 +92,7 @@ def get_service(service_name):
 
 
 # --------------------------------------------------
-# APPLICATION LOGS
+# APPLICATION LOGS (ClickHouse: incident_copilot.application_logs)
 # --------------------------------------------------
 
 def query_logs(
@@ -97,51 +101,45 @@ def query_logs(
     start_time=None,
     end_time=None
 ):
-    with get_connection() as cur:
+    query = """
+        SELECT
+            id,
+            service_name AS service,
+            environment,
+            level,
+            message,
+            latency_ms,
+            request_id,
+            timestamp
+        FROM incident_copilot.application_logs
+        WHERE 1 = 1
+    """
+    params = {}
 
-        query = """
-            SELECT
-                l.id,
-                s.name AS service,
-                s.environment,
-                l.level,
-                l.message,
-                l.latency_ms,
-                l.request_id,
-                l.timestamp
-            FROM public.application_logs AS l
-            JOIN public.services AS s
-                ON l.service_id = s.id
-            WHERE 1 = 1
-        """
+    if service_name:
+        query += " AND service_name ILIKE %(service)s"
+        params["service"] = f"%{service_name}%"
 
-        params = []
+    if level:
+        query += " AND UPPER(level) = UPPER(%(level)s)"
+        params["level"] = level
 
-        if service_name:
-            query += " AND s.name ILIKE %s"
-            params.append(f"%{service_name}%")
+    if start_time:
+        query += " AND timestamp >= %(start_time)s"
+        params["start_time"] = start_time
 
-        if level:
-            query += " AND UPPER(l.level) = UPPER(%s)"
-            params.append(level)
+    if end_time:
+        query += " AND timestamp <= %(end_time)s"
+        params["end_time"] = end_time
 
-        if start_time:
-            query += " AND l.timestamp >= %s"
-            params.append(start_time)
+    query += " ORDER BY timestamp DESC"
 
-        if end_time:
-            query += " AND l.timestamp <= %s"
-            params.append(end_time)
-
-        query += " ORDER BY l.timestamp DESC"
-
-        cur.execute(query, params)
-
-        return cur.fetchall()
+    result = ch_client.query(query, parameters=params)
+    return result.result_rows
 
 
 # --------------------------------------------------
-# INCIDENTS
+# INCIDENTS (PostgreSQL)
 # --------------------------------------------------
 
 def get_incidents(service_name=None, status=None, severity=None):
@@ -172,52 +170,44 @@ def get_incidents(service_name=None, status=None, severity=None):
 
 
 # --------------------------------------------------
-# SLOW REQUESTS
+# SLOW REQUESTS (ClickHouse)
 # --------------------------------------------------
 
 def query_slow_requests(
     service_name=None,
     min_latency_ms=5000
 ):
-    with get_connection() as cur:
+    query = """
+        SELECT
+            id,
+            service_name AS service,
+            environment,
+            level,
+            message,
+            latency_ms,
+            request_id,
+            timestamp
+        FROM incident_copilot.application_logs
+        WHERE latency_ms >= %(min_latency)s
+    """
+    params = {"min_latency": min_latency_ms}
 
-        query = """
-            SELECT
-                l.id,
-                s.name AS service,
-                s.environment,
-                l.level,
-                l.message,
-                l.latency_ms,
-                l.request_id,
-                l.timestamp
-            FROM public.application_logs AS l
-            JOIN public.services AS s
-                ON l.service_id = s.id
-            WHERE l.latency_ms >= %s
-        """
+    if service_name:
+        query += " AND service_name = %(service)s"
+        params["service"] = service_name
 
-        params = [min_latency_ms]
+    query += " ORDER BY latency_ms DESC"
 
-        if service_name:
-            query += " AND s.name = %s"
-            params.append(service_name)
-
-        query += " ORDER BY l.latency_ms DESC"
-
-        cur.execute(query, params)
-
-        return cur.fetchall()
+    result = ch_client.query(query, parameters=params)
+    return result.result_rows
 
 
 # ======================= Error Rate =====================================
 
 ERROR_LEVELS = ["ERROR", "CRITICAL", "FATAL"]
 
-# The burst of errors that opens an incident is written BEFORE started_at
-# (started_at = moment of detection), so the incident window starts earlier.
 INCIDENT_LOOKBACK_MIN = 15
-BASELINE_MIN = 60            # fixed baseline length, so long-open incidents don't stretch it
+BASELINE_MIN = 60
 
 
 def _to_datetime(value):
@@ -232,12 +222,6 @@ def _to_datetime(value):
 # --------------------------------------------------
 
 def find_windows(started_at, resolved_at=None, baseline_gap_minutes=0, baseline_minutes=None):
-    """
-    Incident window = [started_at, resolved_at or now).
-    Baseline window = ends right before the incident (optionally shifted back
-    by baseline_gap_minutes). Its length is baseline_minutes if given,
-    otherwise the same length as the incident window.
-    """
     started_at = _to_datetime(started_at)
     resolved_at = _to_datetime(resolved_at)
 
@@ -263,26 +247,26 @@ def find_windows(started_at, resolved_at=None, baseline_gap_minutes=0, baseline_
 
 
 # --------------------------------------------------
-# TOOL 2: WINDOW STATS (baseline / incident)
+# TOOL 2: WINDOW STATS (ClickHouse)
 # --------------------------------------------------
 
 def get_window_stats(service_name, start_time, end_time):
-    """Total logs, error count and error rate (%) for one window. Window is [start, end)."""
-    with get_connection() as cur:
-        cur.execute(
-            """
-            SELECT
-                COUNT(*) AS total_logs,
-                COUNT(*) FILTER (WHERE UPPER(l.level) = ANY(%s)) AS error_count
-            FROM public.application_logs AS l
-            JOIN public.services AS s ON l.service_id = s.id
-            WHERE s.name = %s
-              AND l.timestamp >= %s
-              AND l.timestamp <  %s;
-            """,
-            (ERROR_LEVELS, service_name, start_time, end_time),
-        )
-        total, errors = cur.fetchone()
+    query = """
+        SELECT
+            count(*) AS total_logs,
+            countIf(UPPER(level) IN %(error_levels)s) AS error_count
+        FROM incident_copilot.application_logs
+        WHERE service_name = %(service)s
+          AND timestamp >= %(start)s
+          AND timestamp < %(end)s;
+    """
+    result = ch_client.query(query, parameters={
+        "error_levels": tuple(ERROR_LEVELS),
+        "service": service_name,
+        "start": start_time,
+        "end": end_time
+    })
+    total, errors = result.result_rows[0]
 
     return {
         "total_logs": total,
@@ -292,53 +276,49 @@ def get_window_stats(service_name, start_time, end_time):
 
 
 # --------------------------------------------------
-# TOOL 3: GROUP ERRORS
+# TOOL 3: GROUP ERRORS (ClickHouse)
 # --------------------------------------------------
 
 def group_errors(service_name, start_time, end_time, limit=10):
-    """
-    Cluster errors by fingerprint. The fingerprint is the message with
-    UUIDs and numbers replaced, so "timeout after 5023ms for user 88"
-    and "timeout after 4101ms for user 12" land in the same group.
-    """
-    with get_connection() as cur:
-        cur.execute(
-            """
-            WITH errs AS (
-                SELECT
-                    l.message,
-                    l.request_id,
-                    l.timestamp,
-                    regexp_replace(
-                        regexp_replace(
-                            l.message,
-                            '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
-                            '<uuid>', 'g'
-                        ),
-                        '[0-9]+', '<n>', 'g'
-                    ) AS fingerprint
-                FROM public.application_logs AS l
-                JOIN public.services AS s ON l.service_id = s.id
-                WHERE s.name = %s
-                  AND UPPER(l.level) = ANY(%s)
-                  AND l.timestamp >= %s
-                  AND l.timestamp <  %s
-            )
+    query = """
+        WITH errs AS (
             SELECT
-                fingerprint,
-                COUNT(*)          AS count,
-                MIN(timestamp)    AS first_seen,
-                MAX(timestamp)    AS last_seen,
-                (ARRAY_AGG(message ORDER BY timestamp))[1]    AS sample_message,
-                (ARRAY_AGG(request_id ORDER BY timestamp))[1] AS sample_request_id
-            FROM errs
-            GROUP BY fingerprint
-            ORDER BY count DESC
-            LIMIT %s;
-            """,
-            (service_name, ERROR_LEVELS, start_time, end_time, limit),
+                message,
+                request_id,
+                timestamp,
+                regexpReplaceAll(
+                    regexpReplaceAll(
+                        message,
+                        '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
+                        '<uuid>'
+                    ),
+                    '[0-9]+', '<n>'
+                ) AS fingerprint
+            FROM incident_copilot.application_logs
+            WHERE service_name = %(service)s
+              AND UPPER(level) IN %(error_levels)s
+              AND timestamp >= %(start)s
+              AND timestamp < %(end)s
         )
-        rows = cur.fetchall()
+        SELECT
+            fingerprint,
+            count(*)          AS count,
+            min(timestamp)    AS first_seen,
+            max(timestamp)    AS last_seen,
+            argMin(message, timestamp)    AS sample_message,
+            argMin(request_id, timestamp) AS sample_request_id
+        FROM errs
+        GROUP BY fingerprint
+        ORDER BY count DESC
+        LIMIT %(limit)s;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name,
+        "error_levels": tuple(ERROR_LEVELS),
+        "start": start_time,
+        "end": end_time,
+        "limit": limit
+    })
 
     return [
         {
@@ -349,7 +329,7 @@ def group_errors(service_name, start_time, end_time, limit=10):
             "sample_message": r[4],
             "sample_request_id": r[5],
         }
-        for r in rows
+        for r in result.result_rows
     ]
 
 
@@ -362,7 +342,6 @@ def collect_error_rate_evidence(service_name, started_at, resolved_at=None, top_
     started_at = _to_datetime(started_at)
     resolved_at = _to_datetime(resolved_at)
 
-    # start the incident window earlier, so the errors that triggered detection are inside it
     windows = find_windows(
         started_at - timedelta(minutes=lookback_minutes),
         resolved_at,
@@ -377,7 +356,6 @@ def collect_error_rate_evidence(service_name, started_at, resolved_at=None, top_
     baseline_groups = group_errors(service_name, base["start"], base["end"], 50)
     baseline_counts = {g["fingerprint"]: g["count"] for g in baseline_groups}
 
-    # Add baseline count per error group, so the analyst sees what actually changed
     for g in incident_groups:
         g["baseline_count"] = baseline_counts.get(g["fingerprint"], 0)
         g["is_new"] = g["baseline_count"] == 0
@@ -403,17 +381,15 @@ def collect_error_rate_evidence(service_name, started_at, resolved_at=None, top_
 
 # ======================= New Error Type =====================================
 
-TRIGGER_LOOKBACK_MIN = 15    # window around the newest matching error
-WARN_LOOKBACK_MIN = 30       # how far before the first error to look for warnings
-HISTORY_HOURS = 24           # how far back to scan for matching errors
+TRIGGER_LOOKBACK_MIN = 15
+WARN_LOOKBACK_MIN = 30
+HISTORY_HOURS = 24
 TRACE_REQUESTS = 3
 MAX_LINES = 20
 
-
 BASE_SELECT = """
-    SELECT l.timestamp, s.name, l.level, l.latency_ms, l.request_id, l.message
-    FROM application_logs l
-    JOIN services s ON s.id = l.service_id
+    SELECT timestamp, service_name, level, latency_ms, request_id, message
+    FROM incident_copilot.application_logs
 """
 
 
@@ -427,63 +403,55 @@ def _row(r):
 
 
 def _fmt(rec):
-    """ISO string timestamp for the LLM."""
-    return {**rec, "ts": rec["ts"].isoformat()}
+    return {**rec, "ts": rec["ts"].isoformat() if isinstance(rec["ts"], datetime) else rec["ts"]}
 
-
-# ---------- the three fetchers for new_error_type ----------
 
 def get_trigger_logs(service, fp):
-    """ERROR rows for this service whose fingerprint matches, clustered around the newest one."""
-    with get_connection() as cur:
-        cur.execute(
-            BASE_SELECT + """
-            WHERE s.name = %s AND l.level = 'ERROR'
-              AND l.timestamp >= now() - (%s * interval '1 hour')
-            ORDER BY l.timestamp;
-            """,
-            (service, HISTORY_HOURS),
-        )
-        rows = [_row(r) for r in cur.fetchall()]
+    query = BASE_SELECT + """
+        WHERE service_name = %(service)s AND level = 'ERROR'
+          AND timestamp >= now() - INTERVAL %(hours)s HOUR
+        ORDER BY timestamp;
+    """
+    result = ch_client.query(query, parameters={"service": service, "hours": HISTORY_HOURS})
+    rows = [_row(r) for r in result.result_rows]
 
-    # the logs table has no fingerprint column, so compute it per message here
     matches = [r for r in rows if fingerprint(r["message"]) == fp]
     if not matches:
         return {"count": 0, "first_seen": None, "last_seen": None, "samples": []}
 
-    anchor = matches[-1]["ts"]                         # newest matching error
+    anchor = matches[-1]["ts"]
     since = anchor - timedelta(minutes=TRIGGER_LOOKBACK_MIN)
-    hits = [r for r in matches if r["ts"] >= since]    # the cluster that opened the incident
+    hits = [r for r in matches if r["ts"] >= since]
     return {
         "count": len(hits),
-        "first_seen": hits[0]["ts"],                   # raw datetime, reused by the next fetcher
+        "first_seen": hits[0]["ts"],
         "last_seen": hits[-1]["ts"],
         "samples": [_fmt(h) for h in hits[:5]],
     }
 
 
 def get_warns_before(service, first_seen):
-    """WARN rows in the 30 min BEFORE the first trigger error."""
     if first_seen is None:
         return []
-    with get_connection() as cur:
-        cur.execute(
-            BASE_SELECT + """
-            WHERE s.name = %s AND l.level = 'WARN'
-              AND l.timestamp <  %s
-              AND l.timestamp >= %s - (%s * interval '1 minute')
-            ORDER BY l.timestamp DESC
-            LIMIT %s;
-            """,
-            (service, first_seen, first_seen, WARN_LOOKBACK_MIN, MAX_LINES),
-        )
-        rows = [_row(r) for r in cur.fetchall()]
-    rows.reverse()                                     # oldest first
+    query = BASE_SELECT + """
+        WHERE service_name = %(service)s AND level = 'WARN'
+          AND timestamp < %(first_seen)s
+          AND timestamp >= %(first_seen)s - INTERVAL %(mins)s MINUTE
+        ORDER BY timestamp DESC
+        LIMIT %(limit)s;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service,
+        "first_seen": first_seen,
+        "mins": WARN_LOOKBACK_MIN,
+        "limit": MAX_LINES
+    })
+    rows = [_row(r) for r in result.result_rows]
+    rows.reverse()
     return [_fmt(r) for r in rows]
 
 
 def get_trace(trigger_samples):
-    """Every row (all services) sharing a request_id with a failing request."""
     request_ids = []
     for s in trigger_samples:
         if s["request_id"] not in request_ids:
@@ -492,24 +460,18 @@ def get_trace(trigger_samples):
     if not request_ids:
         return {}
 
-    with get_connection() as cur:
-        cur.execute(
-            BASE_SELECT + " WHERE l.request_id = ANY(%s) ORDER BY l.timestamp;",
-            (request_ids,),
-        )
-        rows = [_row(r) for r in cur.fetchall()]
+    query = BASE_SELECT + " WHERE request_id IN %(req_ids)s ORDER BY timestamp;"
+    result = ch_client.query(query, parameters={"req_ids": tuple(request_ids)})
+    rows = [_row(r) for r in result.result_rows]
 
     traces = {rid: [] for rid in request_ids}
     for r in rows:
-        if len(traces[r["request_id"]]) < MAX_LINES:
+        if r["request_id"] in traces and len(traces[r["request_id"]]) < MAX_LINES:
             traces[r["request_id"]].append(_fmt(r))
     return traces
 
 
-# ---------- put it together ----------
-
 def fetch_new_error_type(incident):
-    """incident = {incident_id, service, rule, fingerprint}"""
     trigger = get_trigger_logs(incident["service"], incident["fingerprint"])
     warns = get_warns_before(incident["service"], trigger["first_seen"])
     trace = get_trace(trigger["samples"])
@@ -537,9 +499,9 @@ def fetch_new_error_type(incident):
 
 # ======================= Latency Spike =====================================
 
-LATENCY_SPIKE_MULT = 2.0      # same multiplier your detector uses
-LATENCY_LOOKBACK_MIN = 15     # start the incident window before started_at
-LATENCY_BASELINE_MIN = 60     # fixed baseline length
+LATENCY_SPIKE_MULT = 2.0
+LATENCY_LOOKBACK_MIN = 15
+LATENCY_BASELINE_MIN = 60
 
 
 def get_incident_started_at(incident_id):
@@ -553,93 +515,96 @@ def _f(x):
     return round(float(x), 1) if x is not None else None
 
 
-# ---------- 1. latency stats for one window ----------
-
 def get_latency_stats(service_name, start_time, end_time):
-    """count, p50, p95, max of latency_ms for one window [start, end)."""
-    with get_connection() as cur:
-        cur.execute(
-            """
-            SELECT COUNT(l.latency_ms),
-                   percentile_cont(0.5)  WITHIN GROUP (ORDER BY l.latency_ms),
-                   percentile_cont(0.95) WITHIN GROUP (ORDER BY l.latency_ms),
-                   MAX(l.latency_ms)
-            FROM public.application_logs l
-            JOIN public.services s ON s.id = l.service_id
-            WHERE s.name = %s AND l.latency_ms IS NOT NULL
-              AND l.timestamp >= %s AND l.timestamp < %s;
-            """,
-            (service_name, start_time, end_time),
-        )
-        n, p50, p95, mx = cur.fetchone()
+    query = """
+        SELECT
+            count(latency_ms),
+            quantile(0.5)(latency_ms),
+            quantile(0.95)(latency_ms),
+            max(latency_ms)
+        FROM incident_copilot.application_logs
+        WHERE service_name = %(service)s
+          AND latency_ms IS NOT NULL
+          AND timestamp >= %(start)s
+          AND timestamp < %(end)s;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name,
+        "start": start_time,
+        "end": end_time
+    })
+    n, p50, p95, mx = result.result_rows[0]
     return {"count": n, "p50_ms": _f(p50), "p95_ms": _f(p95), "max_ms": _f(mx)}
 
 
-# ---------- 2. latency per minute (shows sudden jump vs slow creep) ----------
-
 def get_latency_timeline(service_name, start_time, end_time, limit=30):
-    with get_connection() as cur:
-        cur.execute(
-            """
-            SELECT date_trunc('minute', l.timestamp) AS minute,
-                   COUNT(*) AS requests,
-                   percentile_cont(0.95) WITHIN GROUP (ORDER BY l.latency_ms) AS p95
-            FROM public.application_logs l
-            JOIN public.services s ON s.id = l.service_id
-            WHERE s.name = %s AND l.latency_ms IS NOT NULL
-              AND l.timestamp >= %s AND l.timestamp < %s
-            GROUP BY minute ORDER BY minute DESC
-            LIMIT %s;
-            """,
-            (service_name, start_time, end_time, limit),
-        )
-        rows = cur.fetchall()
-    rows.reverse()  # oldest first
-    return [{"minute": m.isoformat(), "requests": n, "p95_ms": _f(p)} for m, n, p in rows]
+    query = """
+        SELECT
+            toStartOfMinute(timestamp) AS minute,
+            count(*) AS requests,
+            quantile(0.95)(latency_ms) AS p95
+        FROM incident_copilot.application_logs
+        WHERE service_name = %(service)s
+          AND latency_ms IS NOT NULL
+          AND timestamp >= %(start)s
+          AND timestamp < %(end)s
+        GROUP BY minute
+        ORDER BY minute DESC
+        LIMIT %(limit)s;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name,
+        "start": start_time,
+        "end": end_time,
+        "limit": limit
+    })
+    rows = result.result_rows
+    rows.reverse()
+    return [{"minute": m.isoformat() if isinstance(m, datetime) else str(m), "requests": n, "p95_ms": _f(p)} for m, n, p in rows]
 
-
-# ---------- 3. the slow requests themselves ----------
 
 def get_slow_requests(service_name, start_time, end_time, threshold_ms=None, limit=MAX_LINES):
-    """Slowest rows in the window. If threshold_ms is None, just the top N slowest."""
-    with get_connection() as cur:
-        cur.execute(
-            BASE_SELECT + """
-            WHERE s.name = %s AND l.latency_ms IS NOT NULL
-              AND l.timestamp >= %s AND l.timestamp < %s
-              AND (%s::float IS NULL OR l.latency_ms >= %s::float)
-            ORDER BY l.latency_ms DESC
-            LIMIT %s;
-            """,
-            (service_name, start_time, end_time, threshold_ms, threshold_ms, limit),
-        )
-        return [_fmt(_row(r)) for r in cur.fetchall()]
+    query = BASE_SELECT + """
+        WHERE service_name = %(service)s
+          AND latency_ms IS NOT NULL
+          AND timestamp >= %(start)s
+          AND timestamp < %(end)s
+          AND (%(threshold)s IS NULL OR latency_ms >= %(threshold)s)
+        ORDER BY latency_ms DESC
+        LIMIT %(limit)s;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name,
+        "start": start_time,
+        "end": end_time,
+        "threshold": threshold_ms,
+        "limit": limit
+    })
+    return [_fmt(_row(r)) for r in result.result_rows]
 
-
-# ---------- 4. neighbouring services (is the slowness coming from upstream?) ----------
 
 def get_neighbor_latency(service_name, base_start, inc_start, inc_end):
-    """p95 per OTHER service: baseline window vs incident window."""
-    with get_connection() as cur:
-        cur.execute(
-            """
-            SELECT s.name,
-                   percentile_cont(0.95) WITHIN GROUP (ORDER BY l.latency_ms)
-                       FILTER (WHERE l.timestamp <  %s) AS base_p95,
-                   percentile_cont(0.95) WITHIN GROUP (ORDER BY l.latency_ms)
-                       FILTER (WHERE l.timestamp >= %s) AS inc_p95
-            FROM public.application_logs l
-            JOIN public.services s ON s.id = l.service_id
-            WHERE s.name <> %s AND l.latency_ms IS NOT NULL
-              AND l.timestamp >= %s AND l.timestamp < %s
-            GROUP BY s.name;
-            """,
-            (inc_start, inc_start, service_name, base_start, inc_end),
-        )
-        rows = cur.fetchall()
+    query = """
+        SELECT
+            service_name,
+            quantile(0.95) FILTER (WHERE timestamp < %(inc_start)s) AS base_p95,
+            quantile(0.95) FILTER (WHERE timestamp >= %(inc_start)s) AS inc_p95
+        FROM incident_copilot.application_logs
+        WHERE service_name <> %(service)s
+          AND latency_ms IS NOT NULL
+          AND timestamp >= %(base_start)s
+          AND timestamp < %(inc_end)s
+        GROUP BY service_name;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name,
+        "inc_start": inc_start,
+        "base_start": base_start,
+        "inc_end": inc_end
+    })
 
     out = []
-    for name, b, i in rows:
+    for name, b, i in result.result_rows:
         b, i = _f(b), _f(i)
         out.append({
             "service": name,
@@ -650,10 +615,7 @@ def get_neighbor_latency(service_name, base_start, inc_start, inc_end):
     return sorted(out, key=lambda x: x["multiplier"] or 0, reverse=True)
 
 
-# ---------- put it together ----------
-
 def fetch_latency_spike(incident):
-    """incident = {incident_id, service, rule, fingerprint}  (started_at optional)"""
     service = incident["service"]
     started_at = incident.get("started_at") or get_incident_started_at(incident["incident_id"])
     started_at = _to_datetime(started_at)
@@ -705,38 +667,20 @@ def fetch_latency_spike(incident):
     }
 
 
-# ======================= Incident Report (LLM result) =====================================
-#
-# Saves the LLM investigation result on the incident row.
-#   Symptoms    -> description
-#   Root cause  -> root_cause
-#   Solution    -> resolution
-#   Evidence    -> evidence               (new column, see ensure_report_columns)
-#   Confidence  -> resolution_confidence  ('inferred' or 'unknown', never 'confirmed')
-#
-# This does NOT close the incident: status and resolved_at are left alone.
-# Only a human closes an incident (see resolve_incident below).
-
+# --------------------------------------------------
+# INCIDENTS REPORT & RESOLUTION (PostgreSQL)
+# --------------------------------------------------
 
 def ensure_report_columns():
-    """Adds the evidence column (safe to call on every start)."""
     with get_connection() as cur:
         cur.execute("ALTER TABLE public.incidents ADD COLUMN IF NOT EXISTS evidence text;")
 
 
-# ---------- parsing the LLM text ----------
-
-_SECTION_RE = re.compile(
-    r"^\s*(Symptoms|Root cause|Solution|Evidence|Confidence)\s*:\s*",
-    re.IGNORECASE | re.MULTILINE,
-)
-
 def parse_report(text):
-    """
-    Splits the LLM report into its five sections.
-    Returns a dict with keys: symptoms, root_cause, solution, evidence, confidence
-    (a missing section gives None).
-    """
+    _SECTION_RE = re.compile(
+        r"^\s*(Symptoms|Root cause|Solution|Evidence|Confidence)\s*:\s*",
+        re.IGNORECASE | re.MULTILINE,
+    )
     text = text or ""
     matches = list(_SECTION_RE.finditer(text))
     sections = {}
@@ -754,63 +698,7 @@ def parse_report(text):
     }
 
 
-# ---------- cleaning the values before they go into the db ----------
-
-_UNDETERMINED_PHRASES = (
-    "unable to determine",
-    "cannot be determined",
-    "can't be determined",
-    "not enough evidence",
-    "insufficient evidence",
-    "no specific fix",
-    "no fix can be",
-    "unknown",
-)
-
-
-def is_undetermined(text):
-    """True when the LLM said 'I don't know' instead of giving a real answer."""
-    if not text:
-        return True
-    lowered = text.lower()
-    return any(p in lowered for p in _UNDETERMINED_PHRASES)
-
-
-def map_confidence(llm_confidence, root_cause):
-    """
-    LLM says HIGH / MEDIUM / LOW. The db uses confirmed / inferred / unknown.
-    Nobody has confirmed an LLM guess, so 'confirmed' is never used here.
-    """
-    if root_cause is None:
-        return "unknown"
-    if (llm_confidence or "").upper() in ("HIGH", "MEDIUM"):
-        return "inferred"
-    return "unknown"
-
-
-# ---------- the function you call from the graph ----------
-
-SAVE_REPORT_SQL = """
-    UPDATE public.incidents
-    SET description = COALESCE(%s, description),
-        root_cause = %s,
-        resolution = %s,
-        resolution_confidence = %s,
-        evidence = %s,
-        status = CASE WHEN %s THEN 'resolved' ELSE status END,
-        resolved_at = CASE WHEN %s THEN COALESCE(resolved_at, now()) ELSE resolved_at END
-    WHERE id = %s
-      AND (root_cause IS NULL OR resolution_confidence <> 'confirmed')
-      AND status <> 'resolved';
-"""
-
-
 def save_investigation_result(incident_id, symptoms=None, evidence=None):
-    """
-    Saves only the LLM output: Symptoms -> description, Evidence -> evidence.
-    Does not touch status, resolved_at, root_cause, resolution or
-    resolution_confidence. Those are written only by resolve_incident().
-    """
     with get_connection() as cur:
         cur.execute(
             """
@@ -824,18 +712,7 @@ def save_investigation_result(incident_id, symptoms=None, evidence=None):
         return cur.rowcount == 1
 
 
-# ======================= Resolve Incident (human) =====================================
-#
-# The human closes the incident after fixing it:
-#   root_cause            -> typed by the user (main issue)
-#   resolution            -> typed by the user (how it was solved)
-#   resolution_confidence -> 'confirmed' (a human verified it)
-#   status                -> 'resolved'
-#   resolved_at           -> current time
-
-
 def get_incident(incident_id):
-    """Returns the incident row as a dict, or None."""
     with get_connection() as cur:
         cur.execute(
             """
@@ -857,10 +734,6 @@ def get_incident(incident_id):
 
 
 def resolve_incident(incident_id, root_cause, resolution):
-    """
-    Human closes the incident: stores root cause + fix, marks it resolved.
-    Overwrites any LLM guess. Returns True if an open incident was closed.
-    """
     root_cause = (root_cause or "").strip()
     resolution = (resolution or "").strip()
     if not root_cause or not resolution:
@@ -868,35 +741,35 @@ def resolve_incident(incident_id, root_cause, resolution):
 
     with get_connection() as cur:
         cur.execute(
-                """
-                UPDATE public.incidents
-                SET root_cause = %s,
-                    resolution = %s,
-                    resolution_confidence = 'confirmed',
-                    status = 'resolved',
-                    resolved_at = now()
-                WHERE id = %s
-                AND status <> 'resolved';
-                """,
-                (root_cause, resolution, incident_id),
-            )
+            """
+            UPDATE public.incidents
+            SET root_cause = %s,
+                resolution = %s,
+                resolution_confidence = 'confirmed',
+                status = 'resolved',
+                resolved_at = now()
+            WHERE id = %s
+            AND status <> 'resolved';
+            """,
+            (root_cause, resolution, incident_id),
+        )
         return cur.rowcount == 1
 
 
-# ======================= Similar Incidents =====================================
+# --------------------------------------------------
+# SIMILAR INCIDENTS VECTOR SEARCH (PostgreSQL pgvector)
+# --------------------------------------------------
 
-SIMILAR_MIN_SIMILARITY = 0.75   # below this, a match is treated as "no match"
+SIMILAR_MIN_SIMILARITY = 0.75
 
 
 def _to_pgvector(vec):
-    """List of floats -> pgvector text '[0.1,0.2,...]'. A string is passed through."""
     if isinstance(vec, str):
         return vec
     return "[" + ",".join(f"{float(x):.6f}" for x in vec) + "]"
 
 
 def get_incident_embedding(incident_id):
-    """Returns (embedding_text, service_name) for an incident, or (None, None)."""
     with get_connection() as cur:
         cur.execute(
             """
@@ -919,11 +792,6 @@ def find_similar_incidents(
     min_similarity=SIMILAR_MIN_SIMILARITY,
     only_confirmed=True,
 ):
-    """
-    embedding: the new incident's vector (list of floats, or pgvector text).
-    Returns past RESOLVED incidents of the same service, most similar first:
-      {incident_id, similarity, signature_text, root_cause, resolution, verified}
-    """
     if embedding is None:
         return []
 
@@ -964,7 +832,7 @@ def find_similar_incidents(
             "signature_text": r[2],
             "root_cause": r[3],
             "resolution": r[4],
-            "verified": r[5],          # "confirmed" or "inferred"
+            "verified": r[5],
         }
         for r in rows
         if r[1] is not None and float(r[1]) >= min_similarity
