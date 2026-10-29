@@ -512,7 +512,10 @@ def get_incident_started_at(incident_id):
 
 
 def _f(x):
-    return round(float(x), 1) if x is not None else None
+    # ClickHouse quantile() returns nan (not NULL) on an empty set; treat it as "no data"
+    if x is None or x != x:
+        return None
+    return round(float(x), 1)
 
 
 def get_latency_stats(service_name, start_time, end_time):
@@ -584,11 +587,12 @@ def get_slow_requests(service_name, start_time, end_time, threshold_ms=None, lim
 
 
 def get_neighbor_latency(service_name, base_start, inc_start, inc_end):
+    # ClickHouse has no "FILTER (WHERE ...)" clause: use the -If combinator (quantileIf).
     query = """
         SELECT
             service_name,
-            quantile(0.95) FILTER (WHERE timestamp < %(inc_start)s) AS base_p95,
-            quantile(0.95) FILTER (WHERE timestamp >= %(inc_start)s) AS inc_p95
+            quantileIf(0.95)(latency_ms, timestamp <  %(inc_start)s) AS base_p95,
+            quantileIf(0.95)(latency_ms, timestamp >= %(inc_start)s) AS inc_p95
         FROM incident_copilot.application_logs
         WHERE service_name <> %(service)s
           AND latency_ms IS NOT NULL
@@ -667,6 +671,379 @@ def fetch_latency_spike(incident):
     }
 
 
+# ======================= Pattern rules (dependency / resource / queue / auth) =====================
+#
+# One config table drives BOTH the detector (loggs.py) and the evidence fetcher below.
+# Regexes use ClickHouse (re2) syntax: \b is a word boundary, "(?i)" is added when querying.
+# To add a new incident type of this kind, add one entry here and add its severity
+# to SEVERITY_BY_RULE in loggs.py.
+
+LOG_PATTERN_RULES = {
+    "dependency_failure": {
+        "regex": r"connection refused|timed? ?out|throttl|could not connect|name resolution|certificate|\bssl\b|\b(502|503|504)\b",
+        "levels": ("ERROR", "WARN"),
+        "min_count": 5,
+        "minutes": 5,
+        "severity": "high",
+    },
+    "resource_exhaustion": {
+        "regex": r"out of memory|\boom\b|too many connections|no space left|pool exhausted|disk full|\bkilled\b",
+        "levels": ("ERROR", "WARN"),
+        "min_count": 3,
+        "minutes": 5,
+        "severity": "high",
+    },
+    "queue_backlog": {
+        "regex": r"dead.?letter|\bdlq\b|queue.*(full|backlog)|consumer lag",
+        "levels": ("ERROR", "WARN"),
+        "min_count": 3,
+        "minutes": 5,
+        "severity": "medium",
+    },
+    "auth_failure_spike": {
+        "regex": r"unauthorized|authentication failed|invalid token|failed login|forbidden",
+        "levels": ("ERROR", "WARN", "INFO"),
+        "min_count": 20,
+        "minutes": 5,
+        "severity": "high",
+    },
+}
+
+PATTERN_LOOKBACK_MIN = 15     # start the incident window before started_at
+PATTERN_BASELINE_MIN = 60     # fixed baseline length
+
+# same normalisation as group_errors(): UUIDs and numbers replaced
+_FP_SQL = """regexpReplaceAll(
+                    regexpReplaceAll(
+                        message,
+                        '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
+                        '<uuid>'
+                    ),
+                    '[0-9]+', '<n>'
+                )"""
+
+
+def _re(regex):
+    """Case-insensitive flag for re2."""
+    return "(?i)" + regex
+
+
+# ---------- used by the DETECTOR (loggs.py) ----------
+
+def count_recent_pattern_hits(service_name, regex, levels, minutes):
+    """(count, newest matching message) in the last N minutes. Used to open incidents."""
+    query = """
+        SELECT count(*), argMax(message, timestamp)
+        FROM incident_copilot.application_logs
+        WHERE service_name = %(service)s
+          AND UPPER(level) IN %(levels)s
+          AND timestamp >= now() - INTERVAL %(mins)s MINUTE
+          AND match(message, %(regex)s);
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name, "levels": tuple(levels),
+        "mins": minutes, "regex": _re(regex),
+    })
+    count, sample = result.result_rows[0]
+    return count, (sample or None)
+
+
+# ---------- used by the EVIDENCE fetcher ----------
+
+def get_pattern_count(service_name, regex, levels, start_time, end_time):
+    query = """
+        SELECT count(*)
+        FROM incident_copilot.application_logs
+        WHERE service_name = %(service)s
+          AND UPPER(level) IN %(levels)s
+          AND timestamp >= %(start)s AND timestamp < %(end)s
+          AND match(message, %(regex)s);
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name, "levels": tuple(levels),
+        "start": start_time, "end": end_time, "regex": _re(regex),
+    })
+    return result.result_rows[0][0]
+
+
+def get_pattern_groups(service_name, regex, levels, start_time, end_time, limit=10):
+    """Matching logs clustered by fingerprint (UUIDs/numbers replaced)."""
+    query = """
+        SELECT fingerprint,
+               count(*)                       AS count,
+               min(timestamp)                 AS first_seen,
+               max(timestamp)                 AS last_seen,
+               argMin(message, timestamp)     AS sample_message,
+               argMin(request_id, timestamp)  AS sample_request_id
+        FROM (
+            SELECT message, request_id, timestamp, """ + _FP_SQL + """ AS fingerprint
+            FROM incident_copilot.application_logs
+            WHERE service_name = %(service)s
+              AND UPPER(level) IN %(levels)s
+              AND timestamp >= %(start)s AND timestamp < %(end)s
+              AND match(message, %(regex)s)
+        )
+        GROUP BY fingerprint
+        ORDER BY count DESC
+        LIMIT %(limit)s;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name, "levels": tuple(levels),
+        "start": start_time, "end": end_time,
+        "regex": _re(regex), "limit": limit,
+    })
+    return [
+        {
+            "fingerprint": r[0], "count": r[1],
+            "first_seen": r[2], "last_seen": r[3],
+            "sample_message": r[4], "sample_request_id": r[5],
+        }
+        for r in result.result_rows
+    ]
+
+
+def get_pattern_samples(service_name, regex, levels, start_time, end_time, limit=5):
+    """The first few matching log lines, oldest first."""
+    query = BASE_SELECT + """
+        WHERE service_name = %(service)s
+          AND UPPER(level) IN %(levels)s
+          AND timestamp >= %(start)s AND timestamp < %(end)s
+          AND match(message, %(regex)s)
+        ORDER BY timestamp
+        LIMIT %(limit)s;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name, "levels": tuple(levels),
+        "start": start_time, "end": end_time,
+        "regex": _re(regex), "limit": limit,
+    })
+    return [_fmt(_row(r)) for r in result.result_rows]
+
+
+def get_pattern_timeline(service_name, regex, levels, start_time, end_time, limit=30):
+    """Per minute: matching logs vs all logs (sudden burst vs slow build-up)."""
+    query = """
+        SELECT toStartOfMinute(timestamp) AS minute,
+               countIf(UPPER(level) IN %(levels)s AND match(message, %(regex)s)) AS matches,
+               count(*) AS total_logs
+        FROM incident_copilot.application_logs
+        WHERE service_name = %(service)s
+          AND timestamp >= %(start)s AND timestamp < %(end)s
+        GROUP BY minute
+        ORDER BY minute DESC
+        LIMIT %(limit)s;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name, "levels": tuple(levels),
+        "start": start_time, "end": end_time,
+        "regex": _re(regex), "limit": limit,
+    })
+    rows = result.result_rows
+    rows.reverse()
+    return [
+        {"minute": m.isoformat() if isinstance(m, datetime) else str(m),
+         "matches": n, "total_logs": t}
+        for m, n, t in rows
+    ]
+
+
+def get_pattern_by_service(regex, levels, start_time, end_time):
+    """Which services show the same pattern? Several at once points to a shared dependency."""
+    query = """
+        SELECT service_name,
+               countIf(UPPER(level) IN %(levels)s AND match(message, %(regex)s)) AS matches
+        FROM incident_copilot.application_logs
+        WHERE timestamp >= %(start)s AND timestamp < %(end)s
+        GROUP BY service_name
+        HAVING matches > 0
+        ORDER BY matches DESC;
+    """
+    result = ch_client.query(query, parameters={
+        "levels": tuple(levels), "start": start_time, "end": end_time, "regex": _re(regex),
+    })
+    return [{"service": s, "matches": n} for s, n in result.result_rows]
+
+
+def fetch_pattern_incident(incident):
+    """
+    Evidence for dependency_failure / resource_exhaustion / queue_backlog / auth_failure_spike.
+    incident = {incident_id, service, rule, fingerprint, started_at?, resolved_at?}
+    """
+    service, rule = incident["service"], incident["rule"]
+    cfg = LOG_PATTERN_RULES[rule]
+    regex, levels = cfg["regex"], cfg["levels"]
+
+    started_at = incident.get("started_at") or get_incident_started_at(incident["incident_id"])
+    started_at = _to_datetime(started_at)
+
+    windows = find_windows(
+        started_at - timedelta(minutes=PATTERN_LOOKBACK_MIN),
+        incident.get("resolved_at"),
+        baseline_minutes=PATTERN_BASELINE_MIN,
+    )
+    inc, base = windows["incident"], windows["baseline"]
+
+    inc_count = get_pattern_count(service, regex, levels, inc["start"], inc["end"])
+    base_count = get_pattern_count(service, regex, levels, base["start"], base["end"])
+    groups = get_pattern_groups(service, regex, levels, inc["start"], inc["end"], 10)
+    samples = get_pattern_samples(service, regex, levels, inc["start"], inc["end"], 5)
+    timeline = get_pattern_timeline(service, regex, levels, base["start"], inc["end"])
+    by_service = get_pattern_by_service(regex, levels, inc["start"], inc["end"])
+
+    trace = get_trace(samples)
+    first_seen = min((g["first_seen"] for g in groups), default=None)
+    warns = get_warns_before(service, first_seen)
+
+    inc_per_min = round(inc_count / inc["minutes"], 2) if inc["minutes"] else None
+    base_per_min = round(base_count / base["minutes"], 2) if base["minutes"] else None
+
+    others = [s for s in by_service if s["service"] != service]
+
+    notes = []
+    if inc_count == 0:
+        notes.append("No logs matching this rule's pattern in the incident window (the cause may not be visible in logs).")
+    if base_count == 0 and inc_count > 0:
+        notes.append("The pattern did not appear at all in the baseline hour, so it is new.")
+    if others:
+        names = ", ".join(f"{s['service']} ({s['matches']})" for s in others)
+        notes.append(f"The same pattern also appears in: {names} (possible shared dependency).")
+    elif inc_count > 0:
+        notes.append("No other service shows this pattern, so the problem looks local to this service.")
+    if not warns:
+        notes.append("No WARN logs found before the first match.")
+    if trace and all(len(v) <= 1 for v in trace.values()):
+        notes.append("Each traced request has only one log line (no cross-service trail).")
+
+    return {
+        "incident": {"type": rule, "service": service},
+        "windows": windows,
+        "evidence": {
+            "pattern_matched": regex,
+            "match_change": {
+                "baseline_count": base_count, "incident_count": inc_count,
+                "baseline_per_min": base_per_min, "incident_per_min": inc_per_min,
+            },
+            "top_match_groups": groups,
+            "sample_lines": samples,
+            "timeline_by_minute": timeline,
+            "services_with_same_pattern": by_service,
+            "warns_before_first_match": warns,
+            "request_traces": trace,
+            "notes": notes,
+        },
+    }
+
+
+# ======================= Traffic Silence =====================================
+
+SILENCE_HISTORY_MIN = 60        # how much volume history to show before the silence
+SILENCE_ACTIVITY_HOURS = 24     # services quiet for longer than this will not appear at all
+
+
+def get_service_activity(recent_minutes=SILENCE_HISTORY_MIN, hours=SILENCE_ACTIVITY_HOURS):
+    """Per service: time of its last log and number of logs in the last N minutes."""
+    query = """
+        SELECT service_name,
+               max(timestamp) AS last_log_at,
+               countIf(timestamp >= now() - INTERVAL %(mins)s MINUTE) AS logs_recent
+        FROM incident_copilot.application_logs
+        WHERE timestamp >= now() - INTERVAL %(hours)s HOUR
+        GROUP BY service_name;
+    """
+    result = ch_client.query(query, parameters={"mins": recent_minutes, "hours": hours})
+    return result.result_rows
+
+
+def get_volume_timeline(service_name, start_time, end_time, limit=SILENCE_HISTORY_MIN):
+    """Logs per minute: shows an abrupt stop vs a gradual decline."""
+    query = """
+        SELECT toStartOfMinute(timestamp) AS minute, count(*) AS logs
+        FROM incident_copilot.application_logs
+        WHERE service_name = %(service)s
+          AND timestamp >= %(start)s AND timestamp < %(end)s
+        GROUP BY minute
+        ORDER BY minute DESC
+        LIMIT %(limit)s;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name, "start": start_time, "end": end_time, "limit": limit,
+    })
+    rows = result.result_rows
+    rows.reverse()
+    return [
+        {"minute": m.isoformat() if isinstance(m, datetime) else str(m), "logs": n}
+        for m, n in rows
+    ]
+
+
+def get_last_lines(service_name, limit=5, only_problems=False):
+    """The newest log lines of a service (optionally only ERROR/WARN), oldest first."""
+    level_filter = "AND level IN ('ERROR', 'WARN')" if only_problems else ""
+    query = BASE_SELECT + f"""
+        WHERE service_name = %(service)s
+          {level_filter}
+        ORDER BY timestamp DESC
+        LIMIT %(limit)s;
+    """
+    result = ch_client.query(query, parameters={"service": service_name, "limit": limit})
+    rows = [_fmt(_row(r)) for r in result.result_rows]
+    rows.reverse()
+    return rows
+
+
+def fetch_silence(incident):
+    """Evidence for traffic_silence. incident = {incident_id, service, rule, fingerprint}"""
+    service = incident["service"]
+    activity = get_service_activity()
+
+    mine = next((r for r in activity if r[0] == service), None)
+    last_log_at = mine[1] if mine else None
+
+    others = []
+    for name, last_at, recent in activity:
+        if name == service:
+            continue
+        others.append({
+            "service": name,
+            "last_log_at": last_at.isoformat() if isinstance(last_at, datetime) else str(last_at),
+            "logs_last_60min": recent,
+        })
+    silent_others = [o["service"] for o in others if not o["logs_last_60min"]]
+
+    timeline = []
+    if last_log_at:
+        timeline = get_volume_timeline(
+            service,
+            last_log_at - timedelta(minutes=SILENCE_HISTORY_MIN),
+            last_log_at + timedelta(minutes=1),
+        )
+
+    notes = []
+    if mine is None:
+        notes.append(f"No logs from this service at all in the last {SILENCE_ACTIVITY_HOURS} hours.")
+    if silent_others:
+        notes.append(f"Other services are silent too: {', '.join(silent_others)} (possible shared cause: network, log pipeline, platform outage).")
+    elif others:
+        notes.append("Other services are still logging, so the silence is specific to this service (crash, deploy, stuck process, or its log shipping).")
+    if timeline and len(timeline) >= 3:
+        counts = [t["logs"] for t in timeline]
+        if counts[-1] < 0.5 * max(counts):
+            notes.append("Log volume fell off before the last line (gradual decline), not an abrupt stop.")
+
+    return {
+        "incident": {"type": "traffic_silence", "service": service},
+        "evidence": {
+            "last_log_at": last_log_at.isoformat() if isinstance(last_log_at, datetime) else None,
+            "logs_last_60min": mine[2] if mine else 0,
+            "volume_before_silence_by_minute": timeline,
+            "last_lines": get_last_lines(service, limit=5),
+            "last_warn_error_lines": get_last_lines(service, limit=MAX_LINES, only_problems=True),
+            "other_services": others,
+            "notes": notes,
+        },
+    }
+
+
 # --------------------------------------------------
 # INCIDENTS REPORT & RESOLUTION (PostgreSQL)
 # --------------------------------------------------
@@ -699,6 +1076,11 @@ def parse_report(text):
 
 
 def save_investigation_result(incident_id, symptoms=None, evidence=None):
+    """
+    Saves only the LLM output: Symptoms -> description, Evidence -> evidence.
+    Does not touch status, resolved_at, root_cause, resolution or
+    resolution_confidence. Those are written only by resolve_incident().
+    """
     with get_connection() as cur:
         cur.execute(
             """
@@ -734,6 +1116,7 @@ def get_incident(incident_id):
 
 
 def resolve_incident(incident_id, root_cause, resolution):
+    """Human closes the incident. The only place root_cause / resolution / 'confirmed' are written."""
     root_cause = (root_cause or "").strip()
     resolution = (resolution or "").strip()
     if not root_cause or not resolution:
@@ -749,7 +1132,7 @@ def resolve_incident(incident_id, root_cause, resolution):
                 status = 'resolved',
                 resolved_at = now()
             WHERE id = %s
-            AND status <> 'resolved';
+              AND status <> 'resolved';
             """,
             (root_cause, resolution, incident_id),
         )
@@ -837,3 +1220,399 @@ def find_similar_incidents(
         for r in rows
         if r[1] is not None and float(r[1]) >= min_similarity
     ]
+
+
+
+# ======================= Extra rules: config =====================================
+
+# Metric rules. kind: "above" (every sample over threshold), "increase" (counter grew by
+# threshold), "growing" (latest >= threshold and recent half >= 1.5x older half).
+METRIC_RULES = {
+    "cpu_high":            {"metric": "cpu_pct",          "kind": "above",    "threshold": 90,  "minutes": 5,  "min_samples": 3, "severity": "high",   "family": "resource"},
+    "memory_high":         {"metric": "memory_pct",       "kind": "above",    "threshold": 90,  "minutes": 5,  "min_samples": 3, "severity": "high",   "family": "resource"},
+    "disk_high":           {"metric": "disk_pct",         "kind": "above",    "threshold": 85,  "minutes": 5,  "min_samples": 3, "severity": "high",   "family": "resource"},
+    "restart_loop":        {"metric": "restart_count",    "kind": "increase", "threshold": 2,   "minutes": 10, "min_samples": 2, "severity": "high",   "family": "resource"},
+    "queue_age_high":      {"metric": "sqs_oldest_age_s", "kind": "above",    "threshold": 300, "minutes": 5,  "min_samples": 3, "severity": "medium", "family": "queue"},
+    "queue_depth_growing": {"metric": "sqs_depth",        "kind": "growing",  "threshold": 100, "minutes": 10, "min_samples": 4, "severity": "medium", "family": "queue"},
+    "dlq_not_empty":       {"metric": "sqs_dlq_depth",    "kind": "above",    "threshold": 0,   "minutes": 2,  "min_samples": 1, "severity": "medium", "family": "queue"},
+}
+
+RESOURCE_METRICS = ["cpu_pct", "memory_pct", "disk_pct", "restart_count"]
+QUEUE_METRICS = ["sqs_oldest_age_s", "sqs_depth", "sqs_dlq_depth", "consumer_count"]
+
+SECURITY_RE = re.compile(
+    r"unauthorized|authentication failed|invalid token|failed login|forbidden|\b(?:401|403|429|5\d\d)\b",
+    re.IGNORECASE,
+)
+_ENDPOINT_RE = re.compile(r"\b(GET|POST|PUT|PATCH|DELETE)\s+(\S+)")
+SECURITY_MINUTES = 5
+SECURITY_MIN_PER_IP = 15
+
+DEPENDENCY_NAMES = ["rds", "aurora", "redis", "elasticache", "dynamodb", "s3", "sqs", "sns",
+                    "kafka", "postgres", "mysql", "mongodb", "stripe"]
+
+CHANGE_LOOKBACK_MIN = 60
+
+
+# ======================= Extra rules: helpers =====================================
+
+def _incident_windows(incident, lookback=15, baseline=60):
+    started_at = incident.get("started_at") or get_incident_started_at(incident["incident_id"])
+    started_at = _to_datetime(started_at)
+    return find_windows(
+        started_at - timedelta(minutes=lookback),
+        incident.get("resolved_at"),
+        baseline_minutes=baseline,
+    )
+
+
+def get_metric_timeline(service_name, metric, start_time, end_time, limit=60):
+    """Per-minute average of one metric for a service (Postgres `metrics` table)."""
+    with get_connection() as cur:
+        cur.execute(
+            """
+            SELECT date_trunc('minute', m.timestamp) AS minute, round(avg(m.value)::numeric, 1)
+            FROM public.metrics m JOIN public.services s ON s.id = m.service_id
+            WHERE s.name = %s AND m.metric = %s AND m.timestamp >= %s AND m.timestamp < %s
+            GROUP BY 1 ORDER BY 1 DESC LIMIT %s;
+            """,
+            (service_name, metric, start_time, end_time, limit),
+        )
+        rows = cur.fetchall()
+    rows.reverse()
+    return [{"minute": m.isoformat(), "value": float(v)} for m, v in rows]
+
+
+def get_metric_timelines(service_name, metrics, start_time, end_time):
+    out = {}
+    for name in metrics:
+        series = get_metric_timeline(service_name, name, start_time, end_time)
+        if series:
+            out[name] = series
+    return out
+
+
+def get_metrics_by_prefix(prefix, start_time, end_time, limit=30):
+    """Dependency-side metrics, e.g. prefix 'rds' -> rds_cpu_pct, rds_connections ..."""
+    with get_connection() as cur:
+        cur.execute(
+            """
+            SELECT metric, date_trunc('minute', timestamp), round(avg(value)::numeric, 1)
+            FROM public.metrics
+            WHERE metric LIKE %s AND timestamp >= %s AND timestamp < %s
+            GROUP BY 1, 2 ORDER BY 1, 2;
+            """,
+            (prefix + "\\_%", start_time, end_time),
+        )
+        rows = cur.fetchall()
+    out = {}
+    for metric, minute, value in rows:
+        out.setdefault(metric, []).append({"minute": minute.isoformat(), "value": float(value)})
+    return {k: v[-limit:] for k, v in out.items()}
+
+
+def get_events(start_time, end_time, kinds=None, service_name=None):
+    """Rows from change_events (deploy, config, restart, oom, aws_health ...)."""
+    with get_connection() as cur:
+        cur.execute(
+            """
+            SELECT c.timestamp, c.kind, c.description, s.name
+            FROM public.change_events c
+            LEFT JOIN public.services s ON s.id = c.service_id
+            WHERE c.timestamp >= %s AND c.timestamp < %s
+              AND (%s::text[] IS NULL OR c.kind = ANY(%s))
+              AND (%s::text IS NULL OR s.name = %s OR c.service_id IS NULL)
+            ORDER BY c.timestamp;
+            """,
+            (start_time, end_time, kinds, kinds, service_name, service_name),
+        )
+        rows = cur.fetchall()
+    return [{"ts": t.isoformat(), "kind": k, "description": d, "service": s} for t, k, d, s in rows]
+
+
+def get_recent_changes(service_name, started_at, minutes=CHANGE_LOOKBACK_MIN):
+    """Deploy-related evidence: changes in the N minutes before the incident started."""
+    started_at = _to_datetime(started_at)
+    return get_events(started_at - timedelta(minutes=minutes), started_at, None, service_name)
+
+
+def get_minute_counts(service_name, start_time, end_time):
+    query = """
+        SELECT toStartOfMinute(timestamp) AS minute, count(*) AS logs
+        FROM incident_copilot.application_logs
+        WHERE service_name = %(service)s AND timestamp >= %(start)s AND timestamp < %(end)s
+        GROUP BY minute ORDER BY minute;
+    """
+    result = ch_client.query(query, parameters={"service": service_name, "start": start_time, "end": end_time})
+    return [{"minute": m.isoformat(), "logs": n} for m, n in result.result_rows]
+
+
+def get_neighbor_volume(service_name, start_time, end_time):
+    """Did other services drop too? Compares log counts now vs the same window yesterday."""
+    day = timedelta(days=1)
+    query = """
+        SELECT service_name,
+               countIf(timestamp >= %(start)s AND timestamp < %(end)s) AS now_count,
+               countIf(timestamp >= %(y_start)s AND timestamp < %(y_end)s) AS yesterday_count
+        FROM incident_copilot.application_logs
+        WHERE service_name <> %(service)s AND timestamp >= %(y_start)s AND timestamp < %(end)s
+        GROUP BY service_name;
+    """
+    result = ch_client.query(query, parameters={
+        "service": service_name, "start": start_time, "end": end_time,
+        "y_start": start_time - day, "y_end": end_time - day,
+    })
+    return [
+        {"service": s, "logs_now": n, "logs_same_time_yesterday": y,
+         "ratio": round(n / y, 2) if y else None}
+        for s, n, y in result.result_rows
+    ]
+
+
+# ======================= Extra rules: evidence fetchers =====================================
+
+def fetch_traffic_drop(incident):
+    service = incident["service"]
+    w = _incident_windows(incident, lookback=10)
+    inc = w["incident"]
+    start = inc["start"] - timedelta(minutes=30)
+    day = timedelta(days=1)
+
+    today = get_minute_counts(service, start, inc["end"])
+    yesterday = get_minute_counts(service, start - day, inc["end"] - day)
+    neighbors = get_neighbor_volume(service, inc["start"], inc["end"])
+    alb = get_metric_timeline(service, "alb_request_count", start, inc["end"])
+
+    dropped = [n["service"] for n in neighbors if n["ratio"] is not None and n["ratio"] < 0.5]
+    notes = []
+    if dropped:
+        notes.append(f"Other services also dropped vs yesterday: {', '.join(dropped)} (possible shared cause: upstream, network, load balancer).")
+    elif neighbors:
+        notes.append("Other services are normal, so the drop looks specific to this service.")
+    if not alb:
+        notes.append("No ALB request-count metric found.")
+
+    return {
+        "incident": {"type": "traffic_drop", "service": service},
+        "windows": w,
+        "evidence": {
+            "logs_per_minute_today": today,
+            "logs_per_minute_same_time_yesterday": yesterday,
+            "neighbor_services": neighbors,
+            "alb_request_count_by_minute": alb,
+            "last_lines": get_last_lines(service, limit=5),
+            "notes": notes,
+        },
+    }
+
+
+def fetch_resource_evidence(incident):
+    service, rule = incident["service"], incident["rule"]
+    w = _incident_windows(incident)
+    inc, base = w["incident"], w["baseline"]
+    cfg = LOG_PATTERN_RULES["resource_exhaustion"]
+
+    metrics = get_metric_timelines(service, RESOURCE_METRICS, base["start"], inc["end"])
+    events = get_events(base["start"], inc["end"], ["restart", "oom", "oom_kill", "scale"], service)
+    oom_logs = get_pattern_samples(service, cfg["regex"], cfg["levels"], inc["start"], inc["end"], 10)
+    errors = group_errors(service, inc["start"], inc["end"], 10)
+
+    notes = []
+    if not metrics:
+        notes.append("No resource metrics found for this service.")
+    if not events and not oom_logs:
+        notes.append("No restart/OOM events or OOM-like log lines found.")
+
+    return {
+        "incident": {"type": rule, "service": service},
+        "windows": w,
+        "evidence": {
+            "metric": METRIC_RULES[rule]["metric"],
+            "metric_timelines": metrics,
+            "restart_oom_events": events,
+            "oom_like_log_lines": oom_logs,
+            "top_error_groups": errors,
+            "notes": notes,
+        },
+    }
+
+
+def fetch_queue_evidence(incident):
+    service, rule = incident["service"], incident["rule"]
+    w = _incident_windows(incident)
+    inc, base = w["incident"], w["baseline"]
+    cfg = LOG_PATTERN_RULES["queue_backlog"]
+
+    metrics = get_metric_timelines(service, QUEUE_METRICS, base["start"], inc["end"])
+    consumer_errors = group_errors(service, inc["start"], inc["end"], 10)
+    queue_logs = get_pattern_samples(service, cfg["regex"], cfg["levels"], inc["start"], inc["end"], 5)
+
+    notes = []
+    if not metrics:
+        notes.append("No queue metrics found for this service.")
+    consumers = metrics.get("consumer_count")
+    if consumers and consumers[-1]["value"] == 0:
+        notes.append("Consumer count is 0 at the end of the window (consumers are down).")
+    if not consumer_errors:
+        notes.append("No consumer error logs in the incident window.")
+
+    return {
+        "incident": {"type": rule, "service": service},
+        "windows": w,
+        "evidence": {
+            "metric": METRIC_RULES[rule]["metric"],
+            "queue_metric_timelines": metrics,
+            "consumer_error_groups": consumer_errors,
+            "queue_log_lines": queue_logs,
+            "notes": notes,
+        },
+    }
+
+
+def fetch_dependency_evidence(incident):
+    """Pattern evidence + errors grouped by dependency name + dependency-side metrics/events."""
+    service = incident["service"]
+    result = fetch_pattern_incident(incident)
+    inc = result["windows"]["incident"]
+    cfg = LOG_PATTERN_RULES["dependency_failure"]
+
+    lines = get_pattern_samples(service, cfg["regex"], cfg["levels"], inc["start"], inc["end"], 500)
+    counts = Counter()
+    for line in lines:
+        low = line["message"].lower()
+        for dep in DEPENDENCY_NAMES:
+            if re.search(rf"\b{dep}\b", low):
+                counts[dep] += 1
+
+    ev = result["evidence"]
+    ev["errors_by_dependency"] = dict(counts.most_common())
+    ev["dependency_events"] = get_events(
+        inc["start"] - timedelta(minutes=15), inc["end"], ["aws_health", "rds_event", "dependency"], None)
+    ev["dependency_metrics"] = {
+        dep: get_metrics_by_prefix(dep, inc["start"] - timedelta(minutes=30), inc["end"])
+        for dep in list(counts)[:3]
+    }
+    if not counts:
+        ev["notes"].append("No known dependency name found in the matching error lines.")
+    return result
+
+
+def fetch_security_evidence(incident):
+    service = incident["service"]
+    w = _incident_windows(incident, lookback=10)
+    inc = w["incident"]
+
+    result = ch_client.query(
+        BASE_SELECT + """
+        WHERE service_name = %(service)s AND timestamp >= %(start)s AND timestamp < %(end)s
+        ORDER BY timestamp LIMIT 20000;
+        """,
+        parameters={"service": service, "start": inc["start"], "end": inc["end"]},
+    )
+    hits = [r for r in (_row(x) for x in result.result_rows) if SECURITY_RE.search(r["message"])]
+
+    ips, endpoints, per_minute = Counter(), Counter(), Counter()
+    for r in hits:
+        m = _IP_RE.search(r["message"])
+        ips[m.group(0) if m else "unknown"] += 1
+        e = _ENDPOINT_RE.search(r["message"])
+        if e:
+            endpoints[f"{e.group(1)} {e.group(2)}"] += 1
+        per_minute[r["ts"].replace(second=0, microsecond=0).isoformat()] += 1
+
+    notes = []
+    if hits and ips.most_common(1)[0][1] > 0.5 * len(hits):
+        notes.append(f"One source dominates: {ips.most_common(1)[0][0]} caused most matching requests.")
+    if not hits:
+        notes.append("No auth-failure or 4xx/5xx lines found in the incident window.")
+
+    return {
+        "incident": {"type": "security_ip_spike", "service": service},
+        "windows": w,
+        "evidence": {
+            "matching_lines": len(hits),
+            "top_ips": [{"ip": ip, "count": c} for ip, c in ips.most_common(10)],
+            "top_endpoints": [{"endpoint": e, "count": c} for e, c in endpoints.most_common(10)],
+            "timeline_by_minute": [{"minute": k, "count": v} for k, v in sorted(per_minute.items())],
+            "sample_lines": [_fmt(h) for h in hits[:5]],
+            "notes": notes,
+        },
+    }
+
+
+def fetch_certificate_evidence(incident):
+    with get_connection() as cur:
+        cur.execute(
+            """
+            SELECT name, expires_at, services
+            FROM public.certificates
+            WHERE expires_at < now() + interval '30 days'
+            ORDER BY expires_at;
+            """
+        )
+        rows = cur.fetchall()
+    now = datetime.now(timezone.utc)
+    certs = []
+    for name, expires_at, services in rows:
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        certs.append({
+            "name": name,
+            "expires_at": expires_at.isoformat(),
+            "days_left": (expires_at - now).days,
+            "services": services,
+        })
+    return {
+        "incident": {"type": "certificate_expiry", "service": incident["service"]},
+        "evidence": {
+            "expiring_certificates": certs,
+            "notes": [] if certs else ["No certificate expiring within 30 days was found in the certificates table."],
+        },
+    }
+
+
+# --------------------------------------------------
+# SINGLE ENTRY POINT: evidence for ANY rule  (replaces the earlier fetch_evidence)
+# --------------------------------------------------
+
+def fetch_evidence(incident):
+    """
+    incident = {incident_id, service, rule, fingerprint, started_at, resolved_at}
+    Returns the evidence dict for the rule that opened the incident, plus
+    `recent_changes` (deploy-related evidence) for EVERY incident type.
+    """
+    rule = incident["rule"]
+
+    if rule == "error_rate":
+        result = collect_error_rate_evidence(
+            service_name=incident["service"], started_at=incident["started_at"],
+            resolved_at=incident.get("resolved_at"), top_n=10)
+    elif rule == "new_error_type":
+        result = fetch_new_error_type(incident)
+    elif rule == "latency_spike":
+        result = fetch_latency_spike(incident)
+    elif rule == "traffic_silence":
+        result = fetch_silence(incident)
+    elif rule == "traffic_drop":
+        result = fetch_traffic_drop(incident)
+    elif rule == "dependency_failure":
+        result = fetch_dependency_evidence(incident)
+    elif rule in LOG_PATTERN_RULES:          # resource_exhaustion, queue_backlog, auth_failure_spike
+        result = fetch_pattern_incident(incident)
+    elif rule in METRIC_RULES:
+        family = METRIC_RULES[rule]["family"]
+        result = fetch_resource_evidence(incident) if family == "resource" else fetch_queue_evidence(incident)
+    elif rule == "security_ip_spike":
+        result = fetch_security_evidence(incident)
+    elif rule == "certificate_expiry":
+        result = fetch_certificate_evidence(incident)
+    else:
+        raise ValueError(f"Unknown rule: {rule}")
+
+    try:
+        result["recent_changes"] = get_recent_changes(incident["service"], incident["started_at"])
+    except Exception as e:
+        result["recent_changes"] = []
+        result.setdefault("evidence", {}).setdefault("notes", []).append(
+            f"Could not read change_events: {e}")
+    return result

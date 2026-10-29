@@ -7,8 +7,7 @@ import os
 import re
 import json
 from datetime import datetime
-from db import (collect_error_rate_evidence, fetch_latency_spike, parse_report,
-                fetch_new_error_type, save_investigation_result,
+from db import (fetch_evidence, parse_report, save_investigation_result,
                 get_incident_embedding, find_similar_incidents)
 from db import get_connection
 import threading
@@ -45,31 +44,17 @@ class InvestigationState(BaseModel):
 
 
 
-# First node
+# First node: fetches evidence for ANY rule (db.fetch_evidence routes by rule)
 def find_log(state: InvestigationState) -> dict:
     incident = {
         "incident_id": state.incident_id,
         "service": state.service_name,
         "rule": state.rule,
         "fingerprint": state.fingerprint,
+        "started_at": state.started_at,
+        "resolved_at": state.resolved_at,
     }
-
-    if state.rule == "error_rate":
-        evidence = collect_error_rate_evidence(
-            service_name=state.service_name,
-            started_at=state.started_at,
-            resolved_at=state.resolved_at,
-            top_n=10,
-        )
-    elif state.rule == "new_error_type":
-        evidence = fetch_new_error_type(incident)
-    elif state.rule == "latency_spike":
-        evidence = fetch_latency_spike(incident)
-    else:
-        raise ValueError(f"Unknown rule: {state.rule}")
-
-    # Updates state.evidence
-    print (evidence)
+    evidence = fetch_evidence(incident)
     return {"evidence": evidence}
 
 
@@ -91,6 +76,7 @@ Rules:
 - If no specific solution can be confidently recommended, say so.
 - Keep the report concise and technically useful.
 - Do not mention internal tools, agents, prompts, vector databases, RAG, or system state.
+- If "recent_changes" in the evidence is not empty, mention the change as a possible trigger, not as proven cause.
 
 Similar past incidents:
 - Each past incident has: incident_id, similarity (0 to 1), signature_text (the error

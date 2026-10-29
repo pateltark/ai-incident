@@ -1,11 +1,31 @@
 """
 loggs.py
 
-Refactored to separate and highlight the Continuous Detector Engine.
-It continuously monitors `application_logs` for all registered services,
-applies the detection rules (error_rate, new_error_type, latency_spike),
-and automatically creates enriched incidents with signature texts,
-Drain3 log templates, and vector embeddings.
+Continuous Detector Engine + read-only console.  (ClickHouse version)
+
+This file never writes logs. Use generate_logs.py + connector_layer.py for that.
+
+LOGS live in ClickHouse (incident_copilot.application_logs).
+Postgres keeps only the control plane: services, incidents, metrics,
+change_events, certificates.
+
+Rules:
+  error_rate           elevated share of ERROR logs vs baseline
+  new_error_type       an error fingerprint never seen in the last 24h
+  latency_spike        p95 latency far above baseline
+  traffic_silence      a service stopped logging
+  traffic_drop         log volume far below the same time yesterday
+  dependency_failure   connection refused / timeout / throttling ...   (pattern rule)
+  resource_exhaustion  OOM / too many connections / disk full ...      (pattern rule)
+  queue_backlog        DLQ / queue full / consumer lag ...             (pattern rule)
+  auth_failure_spike   many failed logins / unauthorized ...           (pattern rule)
+  cpu_high / memory_high / disk_high / restart_loop                    (metric rules)
+  queue_age_high / queue_depth_growing / dlq_not_empty                 (metric rules)
+  security_ip_spike    one IP with many failed-auth / 4xx / 5xx lines
+  certificate_expiry   scheduled check (30 / 14 / 7 days)
+
+Incidents are only CLOSED by a human (`resolve <id>`), which stores the root
+cause + resolution and marks them confirmed. The LLM only suggests.
 """
 
 import datetime
@@ -15,7 +35,6 @@ import os
 import re
 import statistics
 import sys
-import uuid
 from collections import Counter
 import threading
 import time
@@ -25,6 +44,12 @@ from dotenv import load_dotenv
 from drain_templates import cluster_logs, show_clusters
 from embedder import embed_incident
 from main import handle_incident_opened
+from db import (resolve_incident, ch_client, count_recent_pattern_hits,
+                LOG_PATTERN_RULES, METRIC_RULES, SECURITY_RE,
+                SECURITY_MINUTES, SECURITY_MIN_PER_IP)
+
+LOGS_TABLE = "incident_copilot.application_logs"
+ERROR_LEVELS = ("ERROR", "CRITICAL", "FATAL")
 
 # ---------------------------------------------------------------------------
 # Fingerprinting
@@ -53,6 +78,34 @@ def fingerprint(message: str, length: int = 12) -> str:
     normalized = normalize(message)
     digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()
     return digest[:length]
+
+
+# ---------------------------------------------------------------------------
+# Small helpers
+# ---------------------------------------------------------------------------
+
+_SERVICE_NAMES = {}
+
+
+def service_name_of(conn, service_id):
+    """service_id (Postgres) -> service name (used as the key in ClickHouse logs)."""
+    if service_id not in _SERVICE_NAMES:
+        with conn.cursor() as cur:
+            cur.execute("SELECT name FROM services WHERE id = %s;", (service_id,))
+            row = cur.fetchone()
+        if row is None:
+            raise ValueError(f"unknown service_id {service_id}")
+        _SERVICE_NAMES[service_id] = row[0]
+    return _SERVICE_NAMES[service_id]
+
+
+def _aware(dt):
+    """ClickHouse may return naive datetimes; treat them as UTC."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=datetime.timezone.utc)
+    return dt
 
 
 # ---------------------------------------------------------------------------
@@ -118,31 +171,32 @@ def build_signature(service_name, error_type, rows, top_n=SIGNATURE_TOP_TEMPLATE
 
 
 def fetch_signature_logs(conn, service_id, window_minutes=SIGNATURE_WINDOW_MINUTES):
-    sql = """
-        SELECT message, level FROM application_logs
-        WHERE service_id = %s
-          AND timestamp >= now() - (%s * interval '1 minute')
-          AND level IN ('ERROR', 'WARN')
+    result = ch_client.query(
+        f"""
+        SELECT message, level FROM {LOGS_TABLE}
+        WHERE service_id = %(service_id)s
+          AND timestamp >= now() - INTERVAL %(mins)s MINUTE
+          AND UPPER(level) IN ('ERROR', 'WARN')
         ORDER BY timestamp
-        LIMIT %s;
-    """
-    with conn.cursor() as cur:
-        cur.execute(sql, (service_id, window_minutes, SIGNATURE_MAX_LOGS))
-        rows = cur.fetchall()
+        LIMIT %(limit)s;
+        """,
+        parameters={"service_id": service_id, "mins": window_minutes, "limit": SIGNATURE_MAX_LOGS},
+    )
+    rows = [tuple(r) for r in result.result_rows]
     if rows:
         return rows
 
-    sql_all = """
-        SELECT message, level FROM application_logs
-        WHERE service_id = %s
-          AND timestamp >= now() - (%s * interval '1 minute')
+    result = ch_client.query(
+        f"""
+        SELECT message, level FROM {LOGS_TABLE}
+        WHERE service_id = %(service_id)s
+          AND timestamp >= now() - INTERVAL %(mins)s MINUTE
         ORDER BY timestamp
-        LIMIT %s;
-    """
-    with conn.cursor() as cur:
-        cur.execute(sql_all, (service_id, window_minutes, SIGNATURE_MAX_LOGS))
-        return cur.fetchall()
-
+        LIMIT %(limit)s;
+        """,
+        parameters={"service_id": service_id, "mins": window_minutes, "limit": SIGNATURE_MAX_LOGS},
+    )
+    return [tuple(r) for r in result.result_rows]
 
 SAVE_SIGNATURE_SQL = """
     UPDATE incidents
@@ -202,12 +256,32 @@ NEW_ERROR_TYPE_HISTORY_HOURS = 24
 LATENCY_SPIKE_MULT = 2.0
 LATENCY_SPIKE_CONSEC_MINUTES = 3
 
-SEVERITY_BY_RULE = {"error_rate": "high", "new_error_type": "medium", "latency_spike": "medium"}
+TRAFFIC_SILENCE_MINUTES = 5
+
+TRAFFIC_DROP_MINUTES = 5
+TRAFFIC_DROP_RATIO = 0.3          # fire if current volume < 30% of same time yesterday
+TRAFFIC_DROP_MIN_BASELINE = 50    # ignore quiet services (yesterday < 50 logs in the window)
+CERT_THRESHOLD_DAYS = (30, 14, 7)
+
+SEVERITY_BY_RULE = {
+    "error_rate": "high",
+    "new_error_type": "medium",
+    "latency_spike": "medium",
+    "traffic_silence": "high",
+    "traffic_drop": "medium",
+    "security_ip_spike": "high",
+    "certificate_expiry": "medium",    # raise to "high" at 7 days left
+    "resource_saturation": "high",
+}
+# pattern rules (from db.py) and metric rules (from db.py)
+SEVERITY_BY_RULE.update({rule: cfg["severity"] for rule, cfg in LOG_PATTERN_RULES.items()})
+SEVERITY_BY_RULE.update({rule: cfg["severity"] for rule, cfg in METRIC_RULES.items()})
+
 RESOLVE_COOLDOWN_MINUTES = 10
 
 
 # ---------------------------------------------------------------------------
-# DB Config & Core Utilities
+# DB Config & Core Utilities (Postgres = control plane only)
 # ---------------------------------------------------------------------------
 
 def load_db_config():
@@ -244,7 +318,33 @@ def ensure_schema(conn):
         cur.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS signature_text text;")
         cur.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS log_templates jsonb;")
         cur.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS error_type varchar(100);")
+        cur.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS evidence text;")
         cur.execute("UPDATE incidents SET error_type = rule WHERE error_type IS NULL AND rule IS NOT NULL;")
+
+        # --- tables used by the metric / deploy / certificate rules ---
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS metrics (
+                id bigserial PRIMARY KEY,
+                service_id int REFERENCES services(id),
+                metric text NOT NULL,
+                value double precision NOT NULL,
+                timestamp timestamptz NOT NULL DEFAULT now()
+            );""")
+        cur.execute("CREATE INDEX IF NOT EXISTS metrics_lookup ON metrics (metric, timestamp);")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS change_events (
+                id bigserial PRIMARY KEY,
+                service_id int REFERENCES services(id),   -- NULL = platform-wide
+                kind text NOT NULL,                        -- deploy, config, restart, oom, aws_health ...
+                description text,
+                timestamp timestamptz NOT NULL DEFAULT now()
+            );""")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS certificates (
+                name text PRIMARY KEY,
+                expires_at timestamptz NOT NULL,
+                services text                              -- comma separated service names
+            );""")
     conn.commit()
 
 
@@ -271,27 +371,6 @@ def get_service_id(conn, name):
         conn.commit()
         cur.execute("SELECT id FROM services WHERE name = %s;", (name,))
         return cur.fetchone()[0]
-
-
-DEFAULT_LATENCY = {"INFO": 60.0, "WARN": 90.0, "ERROR": 150.0}
-
-
-def write_log(conn, service_name, level, message, latency_ms=None, request_id=None):
-    service_id = get_service_id(conn, service_name)
-    if latency_ms is None:
-        latency_ms = DEFAULT_LATENCY.get(level.upper(), 80.0)
-    if request_id is None:
-        request_id = uuid.uuid4().hex[:16]
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO application_logs (service_id, level, message, latency_ms, request_id, timestamp)
-            VALUES (%s, %s, %s, %s, %s, now());
-            """,
-            (service_id, level.upper(), message, latency_ms, request_id),
-        )
-    conn.commit()
-    return service_id
 
 
 # ---------------------------------------------------------------------------
@@ -346,48 +425,123 @@ def evaluate_latency_spike(buckets):
     return True, {"threshold": threshold, "baseline_median": baseline_median, "recent_p95s": recent_p95s}
 
 
+def evaluate_traffic_silence(last_timestamp):
+    if not last_timestamp:
+        return False, None
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    last_timestamp = _aware(last_timestamp)
+
+    delta_minutes = (now - last_timestamp).total_seconds() / 60
+
+    if delta_minutes >= TRAFFIC_SILENCE_MINUTES:
+        return True, {"last_seen": last_timestamp, "silent_minutes": int(delta_minutes)}
+
+    return False, None
+
+
+def evaluate_pattern_rule(count, min_count):
+    return count >= min_count
+
+
+def evaluate_traffic_drop(current, yesterday):
+    if yesterday < TRAFFIC_DROP_MIN_BASELINE:
+        return False, None
+    if current >= TRAFFIC_DROP_RATIO * yesterday:
+        return False, None
+    return True, {"current": current, "yesterday": yesterday}
+
+
+def evaluate_metric_rule(values, cfg):
+    if len(values) < cfg["min_samples"]:
+        return False, None
+    thr, kind = cfg["threshold"], cfg["kind"]
+    if kind == "above":
+        fired = all(v > thr for v in values)
+    elif kind == "increase":
+        fired = values[-1] - values[0] >= thr
+    elif kind == "growing":
+        half = len(values) // 2
+        older, recent = values[:half], values[half:]
+        fired = bool(older) and values[-1] >= thr and statistics.mean(recent) >= 1.5 * statistics.mean(older)
+    else:
+        fired = False
+    if not fired:
+        return False, None
+    return True, {"first": values[0], "last": values[-1], "threshold": thr, "samples": len(values)}
+
+
+def evaluate_security(messages):
+    """Returns [(ip, count)] for IPs with too many failed-auth / 4xx / 5xx lines."""
+    ips = Counter()
+    for msg in messages:
+        if SECURITY_RE.search(msg):
+            m = _IP_RE.search(msg)
+            if m:
+                ips[m.group(0)] += 1
+    return [(ip, c) for ip, c in ips.most_common() if c >= SECURITY_MIN_PER_IP]
+
+
+# ---------------------------------------------------------------------------
+# Data fetchers for the rules  (logs: ClickHouse, metrics: Postgres)
+# ---------------------------------------------------------------------------
+
 def fetch_error_rate_buckets(conn, service_id):
-    sql = """
-        SELECT date_trunc('minute', timestamp) AS bucket,
-               count(*) AS total,
-               count(*) FILTER (WHERE level = 'ERROR') AS errors
-        FROM application_logs
-        WHERE service_id = %s AND timestamp >= now() - interval '32 minutes'
-          AND timestamp < date_trunc('minute', now()) + interval '1 minute'
-        GROUP BY bucket ORDER BY bucket;
-    """
-    with conn.cursor() as cur:
-        cur.execute(sql, (service_id,))
-        return cur.fetchall()
+    result = ch_client.query(
+        f"""
+        SELECT toStartOfMinute(timestamp) AS bucket,
+               count() AS total,
+               countIf(UPPER(level) IN %(levels)s) AS errors
+        FROM {LOGS_TABLE}
+        WHERE service_id = %(service_id)s
+          AND timestamp >= now() - INTERVAL 32 MINUTE
+        GROUP BY bucket
+        ORDER BY bucket;
+        """,
+        parameters={"service_id": service_id, "levels": ERROR_LEVELS},
+    )
+    return [(_aware(b), int(t), int(e)) for b, t, e in result.result_rows]
 
 
 def fetch_latency_buckets(conn, service_id):
-    sql = """
-        SELECT date_trunc('minute', timestamp) AS bucket,
-               percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95
-        FROM application_logs
-        WHERE service_id = %s AND timestamp >= now() - interval '33 minutes'
-          AND timestamp < date_trunc('minute', now()) + interval '1 minute'
+    result = ch_client.query(
+        f"""
+        SELECT toStartOfMinute(timestamp) AS bucket,
+               quantile(0.95)(latency_ms) AS p95
+        FROM {LOGS_TABLE}
+        WHERE service_id = %(service_id)s
+          AND timestamp >= now() - INTERVAL 33 MINUTE
           AND latency_ms IS NOT NULL
-        GROUP BY bucket ORDER BY bucket;
-    """
-    with conn.cursor() as cur:
-        cur.execute(sql, (service_id,))
-        return cur.fetchall()
+        GROUP BY bucket
+        ORDER BY bucket;
+        """,
+        parameters={"service_id": service_id},
+    )
+    out = []
+    for b, p95 in result.result_rows:
+        p95 = None if p95 is None or p95 != p95 else float(p95)
+        out.append((_aware(b), p95))
+    return out
 
 
 def fetch_error_messages(conn, service_id):
-    sql = """
-        SELECT message, timestamp >= now() - (%s * interval '1 minute') AS is_recent
-        FROM application_logs
-        WHERE service_id = %s AND level = 'ERROR'
-          AND timestamp >= now() - (%s * interval '1 hour');
-    """
-    with conn.cursor() as cur:
-        cur.execute(sql, (NEW_ERROR_TYPE_RECENT_MINUTES, service_id, NEW_ERROR_TYPE_HISTORY_HOURS))
-        rows = cur.fetchall()
+    result = ch_client.query(
+        f"""
+        SELECT message,
+               timestamp >= now() - INTERVAL %(recent)s MINUTE AS is_recent
+        FROM {LOGS_TABLE}
+        WHERE service_id = %(service_id)s
+          AND UPPER(level) IN %(levels)s
+          AND timestamp >= now() - INTERVAL %(hours)s HOUR;
+        """,
+        parameters={
+            "service_id": service_id, "levels": ERROR_LEVELS,
+            "recent": NEW_ERROR_TYPE_RECENT_MINUTES,
+            "hours": NEW_ERROR_TYPE_HISTORY_HOURS,
+        },
+    )
     history_fps, recent_rows = set(), []
-    for message, is_recent in rows:
+    for message, is_recent in result.result_rows:
         fp = fingerprint(message)
         if is_recent:
             recent_rows.append((fp, message))
@@ -395,6 +549,74 @@ def fetch_error_messages(conn, service_id):
             history_fps.add(fp)
     return history_fps, recent_rows
 
+
+def fetch_last_log_timestamp(conn, service_id):
+    result = ch_client.query(
+        f"SELECT count(), max(timestamp) FROM {LOGS_TABLE} WHERE service_id = %(service_id)s;",
+        parameters={"service_id": service_id},
+    )
+    n, last = result.result_rows[0]
+    if not n:
+        return None
+    return _aware(last)
+
+
+def fetch_pattern_hits(conn, service_id, regex, levels, minutes):
+    """(count, newest matching message) for the last N minutes. Regex is re2 syntax (db.py)."""
+    name = service_name_of(conn, service_id)
+    return count_recent_pattern_hits(name, regex, levels, minutes)
+
+
+def fetch_traffic_counts(conn, service_id, minutes):
+    """(logs in last N min, logs in the same N min window yesterday)."""
+    name = service_name_of(conn, service_id)
+    result = ch_client.query(
+        f"""
+        SELECT countIf(timestamp >= now() - INTERVAL %(m)s MINUTE),
+               countIf(timestamp >= now() - INTERVAL 1 DAY - INTERVAL %(m)s MINUTE
+                       AND timestamp <  now() - INTERVAL 1 DAY)
+        FROM {LOGS_TABLE}
+        WHERE service_name = %(service)s
+          AND timestamp >= now() - INTERVAL 1 DAY - INTERVAL %(m)s MINUTE;
+        """,
+        parameters={"service": name, "m": minutes},
+    )
+    cur_n, yest_n = result.result_rows[0]
+    return int(cur_n), int(yest_n)
+
+
+def fetch_security_messages(conn, service_id, minutes):
+    name = service_name_of(conn, service_id)
+    result = ch_client.query(
+        f"""
+        SELECT message FROM {LOGS_TABLE}
+        WHERE service_name = %(service)s
+          AND timestamp >= now() - INTERVAL %(m)s MINUTE
+        LIMIT 5000;
+        """,
+        parameters={"service": name, "m": minutes},
+    )
+    return [r[0] for r in result.result_rows]
+
+
+def fetch_metric_values(conn, service_id, metric, minutes):
+    """Metric samples live in Postgres (`metrics` table)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT value FROM metrics
+            WHERE service_id = %s AND metric = %s
+              AND timestamp >= now() - (%s * interval '1 minute')
+            ORDER BY timestamp;
+            """,
+            (service_id, metric, minutes),
+        )
+        return [float(r[0]) for r in cur.fetchall()]
+
+
+# ---------------------------------------------------------------------------
+# Opening incidents
+# ---------------------------------------------------------------------------
 
 OPEN_INCIDENT_SQL = """
     INSERT INTO incidents (service_id, rule, fingerprint, title, description, severity, status, started_at)
@@ -418,8 +640,7 @@ def try_open_incident(conn, service_id, service_name, rule, fp, title, descripti
     conn.commit()
 
     if row is None:
-        print(f"  (already open: an incident for {service_name}/{fp} exists - no duplicate)")
-        return None
+        return None            # an incident for this service/fingerprint is already open
 
     incident_id = row[0]
     print(f"  >>> INCIDENT OPENED  id={incident_id}  rule={rule}  severity={severity}  fingerprint={fp}")
@@ -455,14 +676,82 @@ def try_open_incident(conn, service_id, service_name, rule, fp, title, descripti
     return incident_id
 
 
+def check_extra_rules(conn, service_id, service_name):
+    """Traffic drop, metric rules, security. Returns True if any extra rule fired."""
+    fired_any = False
+
+    # ---- traffic_drop (volume vs same time yesterday) ----
+    current, yesterday = fetch_traffic_counts(conn, service_id, TRAFFIC_DROP_MINUTES)
+    fired, detail = evaluate_traffic_drop(current, yesterday)
+    if fired:
+        fired_any = True
+        try_open_incident(
+            conn, service_id, service_name, "traffic_drop",
+            fingerprint(f"traffic_drop:{service_name}"),
+            f"Traffic drop in {service_name}",
+            f"{detail['current']} logs in the last {TRAFFIC_DROP_MINUTES} min vs "
+            f"{detail['yesterday']} at the same time yesterday.",
+        )
+
+    # ---- metric rules (cpu / memory / disk / restarts / queue) ----
+    for rule, cfg in METRIC_RULES.items():
+        values = fetch_metric_values(conn, service_id, cfg["metric"], cfg["minutes"])
+        fired, detail = evaluate_metric_rule(values, cfg)
+        if fired:
+            fired_any = True
+            try_open_incident(
+                conn, service_id, service_name, rule,
+                fingerprint(f"{rule}:{service_name}"),
+                f"{rule.replace('_', ' ').capitalize()} in {service_name}",
+                f"{cfg['metric']} went {detail['first']:.1f} -> {detail['last']:.1f} "
+                f"(threshold {detail['threshold']}, {detail['samples']} samples in {cfg['minutes']} min).",
+            )
+
+    # ---- security_ip_spike ----
+    for ip, count in evaluate_security(fetch_security_messages(conn, service_id, SECURITY_MINUTES)):
+        fired_any = True
+        try_open_incident(
+            conn, service_id, service_name, "security_ip_spike",
+            fingerprint(f"security_ip_spike:{service_name}:{ip}"),
+            f"Suspicious traffic from {ip} on {service_name}",
+            f"{count} failed-auth or 4xx/5xx requests from {ip} in the last {SECURITY_MINUTES} minutes.",
+        )
+
+    return fired_any
+
+
+def check_certificates(conn):
+    """Scheduled check (not log based). Opens one incident per certificate per 30/14/7-day bucket."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT name, expires_at, services FROM certificates;")
+        certs = cur.fetchall()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for name, expires_at, services in certs:
+        expires_at = _aware(expires_at)
+        days_left = (expires_at - now).days
+        bucket = next((d for d in sorted(CERT_THRESHOLD_DAYS) if days_left <= d), None)
+        if bucket is None:
+            continue
+        service_name = (services or "platform").split(",")[0].strip()
+        service_id = get_service_id(conn, service_name)
+        try_open_incident(
+            conn, service_id, service_name, "certificate_expiry",
+            fingerprint(f"certificate_expiry:{name}:{bucket}"),
+            f"Certificate {name} expires in {days_left} days",
+            f"Certificate '{name}' expires on {expires_at:%Y-%m-%d} ({days_left} days left). "
+            f"Used by: {services or 'unknown'}.",
+        )
+
+
 # ---------------------------------------------------------------------------
-# SEPARATED DETECTOR ENGINE: Continuous Application Logs Watcher
+# DETECTOR ENGINE: Continuous Application Logs Watcher
 # ---------------------------------------------------------------------------
 
 def check_service(conn, service_id, service_name, quiet_if_nothing=True):
-    """Evaluates application_logs for a specific service against detection rules."""
+    """Evaluates application_logs (ClickHouse) for a service against ALL detection rules."""
     fired_any = False
 
+    # ---- 1. error_rate ----
     buckets = fetch_error_rate_buckets(conn, service_id)
     fired, detail = evaluate_error_rate(buckets)
     if fired:
@@ -476,6 +765,7 @@ def check_service(conn, service_id, service_name, quiet_if_nothing=True):
             f"(baseline {detail['baseline_median']:.1%}).",
         )
 
+    # ---- 2. new_error_type ----
     history_fps, recent_rows = fetch_error_messages(conn, service_id)
     for hit in evaluate_new_error_type(history_fps, recent_rows):
         fired_any = True
@@ -486,6 +776,7 @@ def check_service(conn, service_id, service_name, quiet_if_nothing=True):
             f"{NEW_ERROR_TYPE_RECENT_MINUTES} minutes, not seen in the prior {NEW_ERROR_TYPE_HISTORY_HOURS}h.",
         )
 
+    # ---- 3. latency_spike ----
     buckets = fetch_latency_buckets(conn, service_id)
     fired, detail = evaluate_latency_spike(buckets)
     if fired:
@@ -497,6 +788,36 @@ def check_service(conn, service_id, service_name, quiet_if_nothing=True):
             f"Latency spike in {service_name}",
             f"p95 {p95_str}, more than {LATENCY_SPIKE_MULT}x baseline ({detail['baseline_median']:.0f}ms).",
         )
+
+    # ---- 4. traffic_silence ----
+    fired, detail = evaluate_traffic_silence(fetch_last_log_timestamp(conn, service_id))
+    if fired:
+        fired_any = True
+        try_open_incident(
+            conn, service_id, service_name, "traffic_silence",
+            fingerprint(f"traffic_silence:{service_name}"),
+            f"No logs from {service_name}",
+            f"No logs for {detail['silent_minutes']} minutes "
+            f"(last log at {detail['last_seen']:%H:%M:%S}).",
+        )
+
+    # ---- 5. pattern rules (dependency / resource / queue / auth) ----
+    for rule, cfg in LOG_PATTERN_RULES.items():
+        count, sample = fetch_pattern_hits(
+            conn, service_id, cfg["regex"], cfg["levels"], cfg["minutes"]
+        )
+        if evaluate_pattern_rule(count, cfg["min_count"]):
+            fired_any = True
+            try_open_incident(
+                conn, service_id, service_name, rule,
+                fingerprint(f"{rule}:{service_name}"),
+                f"{rule.replace('_', ' ').capitalize()} in {service_name}",
+                f'{count} matching logs in the last {cfg["minutes"]} minutes. Example: "{sample}"',
+            )
+
+    # ---- 6. extra rules (traffic drop, metrics, security) ----
+    if check_extra_rules(conn, service_id, service_name):
+        fired_any = True
 
     if not fired_any and not quiet_if_nothing:
         print(f"  (no rule fired for {service_name})")
@@ -512,25 +833,76 @@ def evaluate_all_services(conn):
     for service_id, service_name in services:
         if check_service(conn, service_id, service_name, quiet_if_nothing=True):
             any_fired = True
+
+    try:
+        check_certificates(conn)
+    except Exception as e:
+        conn.rollback()
+        print(f"[Log Monitor] certificate check failed: {e}")
+
     return any_fired
 
 
-def monitor_application_logs(interval_seconds=30):
+def monitor_application_logs(poll_interval=1.0):
     """
-    Isolated Continuous Engine Function:
-    Continuously monitors the application_logs table across all services.
-    If conditions warrant raising an incident, it opens the incident row,
-    populates all metadata columns (signature, log_templates, embedding), and
-    fires callbacks.
+    Continuously streams/tails live incoming logs from ClickHouse in real time.
+    Only evaluates newly arriving logs.
     """
     conn = connect()
+    print("[Log Monitor] Started real-time live log tailer...")
+    
+    # Track the last seen timestamp or ID to only process new live logs
+    last_seen_timestamp = datetime.datetime.now(datetime.timezone.utc)
+    
     while True:
         try:
-            evaluate_all_services(conn)
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, name FROM services;")
+                services = cur.fetchall()
+
+            for service_id, service_name in services:
+                # Query ONLY new logs that arrived since the last check
+                result = ch_client.query(
+                    f"""
+                    SELECT timestamp, level, message, latency_ms 
+                    FROM {LOGS_TABLE}
+                    WHERE service_id = %(service_id)s
+                      AND timestamp > parseDateTimeBestEffort(%(last_ts)s)
+                    ORDER BY timestamp ASC
+                    LIMIT 100;
+                    """,
+                    parameters={
+                        "service_id": service_id, 
+                        "last_ts": last_seen_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
+                    },
+                )
+                
+                rows = result.result_rows
+                if rows:
+                    for ts, level, message, latency in rows:
+                        ts_aware = _aware(ts)
+                        if ts_aware > last_seen_timestamp:
+                            last_seen_timestamp = ts_aware
+                        
+                        # Print live incoming log to your console instantly
+                        print(f"[LIVE LOG] {ts} [{service_name}] {level}: {message}")
+                        
+                        # If a live log is an error, instantly check rules or open an incident
+                        if level in ERROR_LEVELS:
+                            clean_message = message
+                            try_open_incident(
+                                conn, service_id, service_name, "new_error_type",
+                                fingerprint(clean_message),
+                                f"Live error in {service_name}",
+                                f'"{clean_message}"'
+                            )
+
         except Exception as e:
             conn.rollback()
-            print(f"[Log Monitor] Error during detection pass: {e}")
-        time.sleep(interval_seconds)
+            print(f"[Log Monitor] Error in live tailer: {e}")
+            
+        # Short pause between tailing ticks to avoid CPU spikes (e.g., 1 second)
+        time.sleep(poll_interval)
 
 
 def start_log_monitoring(interval_seconds=30):
@@ -543,33 +915,8 @@ def start_log_monitoring(interval_seconds=30):
 
 
 # ---------------------------------------------------------------------------
-# Resolving / closing
+# Recovery check (a HUMAN closes incidents, see cmd_resolve)
 # ---------------------------------------------------------------------------
-
-CLOSE_INCIDENT_SQL = """
-    UPDATE incidents
-    SET status = 'resolved',
-        resolved_at = now(),
-        root_cause = %s,
-        resolution = %s,
-        resolution_confidence = %s
-    WHERE id = %s AND status = 'open'
-    RETURNING id, title;
-"""
-
-
-def close_incident(conn, incident_id, root_cause, resolution=None, confidence="confirmed"):
-    with conn.cursor() as cur:
-        cur.execute(CLOSE_INCIDENT_SQL, (root_cause, resolution, confidence, incident_id))
-        result = cur.fetchone()
-    conn.commit()
-    if result is None:
-        print(f"  incident {incident_id} isn't open (already resolved, or doesn't exist)")
-        return False
-    print(f"  >>> INCIDENT RESOLVED  id={result[0]}  \"{result[1]}\"")
-    print("      root cause and resolution saved")
-    return True
-
 
 def fetch_open_incidents(conn):
     with conn.cursor() as cur:
@@ -580,67 +927,93 @@ def fetch_open_incidents(conn):
         return cur.fetchall()
 
 
+def is_extra_rule_quiet(conn, service_id, rule, cooldown_minutes):
+    """True/False for the extra rules, None if `rule` is not one of them."""
+    if rule in METRIC_RULES:
+        cfg = METRIC_RULES[rule]
+        values = fetch_metric_values(conn, service_id, cfg["metric"], cooldown_minutes)
+        fired, _ = evaluate_metric_rule(values, {**cfg, "min_samples": 1})
+        return bool(values) and not fired
+    if rule == "traffic_drop":
+        current, yesterday = fetch_traffic_counts(conn, service_id, TRAFFIC_DROP_MINUTES)
+        return not evaluate_traffic_drop(current, yesterday)[0]
+    if rule == "security_ip_spike":
+        return not evaluate_security(fetch_security_messages(conn, service_id, cooldown_minutes))
+    if rule == "certificate_expiry":
+        return False        # a human closes it after the cert is renewed
+    return None
+
+
 def is_condition_quiet(conn, service_id, rule, fp, cooldown_minutes):
+    """True when the condition that opened the incident has stopped."""
+    extra = is_extra_rule_quiet(conn, service_id, rule, cooldown_minutes)
+    if extra is not None:
+        return extra
+
+    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=cooldown_minutes)
+
     if rule == "error_rate":
         buckets = fetch_error_rate_buckets(conn, service_id)
-        recent = [b for b in buckets if b[0] >= datetime.datetime.now(datetime.timezone.utc)
-                  - datetime.timedelta(minutes=cooldown_minutes)]
+        recent = [b for b in buckets if b[0] >= cutoff]
         if not recent:
             return False
         rates = [ec / tc for _, tc, ec in recent if tc > 0]
         return bool(rates) and all(r < ERROR_RATE_FLOOR for r in rates)
 
     if rule == "new_error_type":
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT message FROM application_logs
-                WHERE service_id = %s AND level = 'ERROR'
-                  AND timestamp >= now() - (%s * interval '1 minute');
-                """,
-                (service_id, cooldown_minutes),
-            )
-            recent_messages = [r[0] for r in cur.fetchall()]
-        return fp not in {fingerprint(m) for m in recent_messages}
+        name = service_name_of(conn, service_id)
+        result = ch_client.query(
+            f"""
+            SELECT message FROM {LOGS_TABLE}
+            WHERE service_name = %(service)s AND UPPER(level) IN %(levels)s
+              AND timestamp >= now() - INTERVAL %(m)s MINUTE;
+            """,
+            parameters={"service": name, "levels": ERROR_LEVELS, "m": cooldown_minutes},
+        )
+        return fp not in {fingerprint(r[0]) for r in result.result_rows}
 
     if rule == "latency_spike":
         buckets = fetch_latency_buckets(conn, service_id)
-        recent = [b for b in buckets if b[0] >= datetime.datetime.now(datetime.timezone.utc)
-                  - datetime.timedelta(minutes=cooldown_minutes)]
+        recent = [b for b in buckets if b[0] >= cutoff]
         if not recent:
             return False
         baseline_pool = buckets[:-len(recent)] if len(buckets) > len(recent) else []
-        if not baseline_pool:
+        baseline_vals = [p95 for _, p95 in baseline_pool if p95 is not None]
+        if not baseline_vals:
             return False
-        baseline_median = statistics.median(p95 for _, p95 in baseline_pool if p95 is not None)
+        baseline_median = statistics.median(baseline_vals)
         if baseline_median <= 0:
             return False
         return all(p95 is not None and p95 < LATENCY_SPIKE_MULT * baseline_median for _, p95 in recent)
+
+    if rule == "traffic_silence":
+        last = fetch_last_log_timestamp(conn, service_id)
+        fired, _ = evaluate_traffic_silence(last)
+        return last is not None and not fired
+
+    if rule in LOG_PATTERN_RULES:
+        cfg = LOG_PATTERN_RULES[rule]
+        count, _ = fetch_pattern_hits(conn, service_id, cfg["regex"], cfg["levels"], cooldown_minutes)
+        return count == 0
 
     return False
 
 
 def autoclose(conn, cooldown_minutes=RESOLVE_COOLDOWN_MINUTES):
+    """
+    Only REPORTS incidents whose condition has cleared. It never closes them:
+    a human closes with 'resolve <id>' so that root cause + resolution are real.
+    """
     open_incidents = fetch_open_incidents(conn)
     if not open_incidents:
         print("  (no open incidents)")
         return
-    closed_any = False
     for incident_id, service_id, rule, fp, started_at in open_incidents:
-        quiet = is_condition_quiet(conn, service_id, rule, fp, cooldown_minutes)
-        if not quiet:
-            print(f"  incident {incident_id} ({rule}): still active, leaving open")
-            continue
-        with conn.cursor() as cur:
-            cur.execute("SELECT root_cause, resolution FROM incidents WHERE id = %s;", (incident_id,))
-            existing_root_cause, existing_resolution = cur.fetchone()
-        root_cause = existing_root_cause or "(auto-closed: condition cleared, no investigation recorded)"
-        resolution = existing_resolution or "(condition stopped firing before a fix was recorded)"
-        confidence = "unknown" if not existing_root_cause else "inferred"
-        if close_incident(conn, incident_id, root_cause, resolution, confidence):
-            closed_any = True
-    if not closed_any:
-        print("  nothing closed this pass")
+        if is_condition_quiet(conn, service_id, rule, fp, cooldown_minutes):
+            print(f"  incident {incident_id} ({rule}): condition cleared. "
+                  f"Run 'resolve {incident_id}' to record the root cause and fix.")
+        else:
+            print(f"  incident {incident_id} ({rule}): still active")
 
 
 # ---------------------------------------------------------------------------
@@ -648,25 +1021,51 @@ def autoclose(conn, cooldown_minutes=RESOLVE_COOLDOWN_MINUTES):
 # ---------------------------------------------------------------------------
 
 HELP = """
+This console only WATCHES. It never writes logs.
+Logs come from:  generate_logs.py -> app.log -> connector_layer.py -> ClickHouse
+
 Commands:
-  error <service> <message...>        write one ERROR log, then check that service
-  warn  <service> <message...>        write one WARN log, then check that service
-  info  <service> <message...>        write one INFO log, then check that service
-  burst <n> <service> <message...>    write N ERROR logs (same message) rapid-fire, then check
-  latency <service> <ms>              write one INFO log with a custom latency_ms, then check
   check [service]                     manually run detection (all services, or just one)
+  rules                               list all detection rules
   incidents                           list all incidents
   signature <id>                      show saved signature text + template counts of an incident
   templates <service>                 show Drain templates learned for a service
-  resolve <id>                        manually close an incident
-  autoclose [minutes]                 check open incidents and close quiet ones
-  logs <service> [n]                  show last n logs for a service
+  resolve <id>                        close an incident: you type root cause + resolution
+  autoclose [minutes]                 report open incidents whose condition has cleared
+  logs <service> [n]                  show last n logs for a service (from ClickHouse)
   services                            list known services
   fp <message...>                     show fingerprint normalization/hash
   mask <message...>                   show old regex masking
   help                                show this again
   quit / exit                         stop
+
+Test ideas (run these in generate_logs.py, not here):
+  burst 6 payment connection refused to db host        -> dependency_failure
+  burst 4 checkout out of memory killed process        -> resource_exhaustion
+  burst 4 inventory message moved to dead letter queue -> queue_backlog
+  burst 25 auth unauthorized invalid token             -> auth_failure_spike
+  burst 20 auth 401 unauthorized from 10.0.0.5         -> security_ip_spike
+  (traffic_silence: stop writing logs to a service for 5+ minutes)
+  (metric rules: insert rows into the Postgres `metrics` table)
+  (certificate_expiry: insert a row into `certificates` expiring within 30 days)
 """
+
+
+def cmd_rules():
+    print("  built-in rules:")
+    print(f"    error_rate       errors > max({ERROR_RATE_FLOOR:.0%}, {ERROR_RATE_BASELINE_MULT}x baseline) for {ERROR_RATE_CONSEC_MINUTES} min")
+    print(f"    new_error_type   new fingerprint, >= {NEW_ERROR_TYPE_MIN_COUNT} times in {NEW_ERROR_TYPE_RECENT_MINUTES} min")
+    print(f"    latency_spike    p95 > {LATENCY_SPIKE_MULT}x baseline for {LATENCY_SPIKE_CONSEC_MINUTES} min")
+    print(f"    traffic_silence  no logs for {TRAFFIC_SILENCE_MINUTES} min")
+    print(f"    traffic_drop     < {TRAFFIC_DROP_RATIO:.0%} of yesterday's volume over {TRAFFIC_DROP_MINUTES} min")
+    print("  pattern rules:")
+    for rule, cfg in LOG_PATTERN_RULES.items():
+        print(f"    {rule:<20} >= {cfg['min_count']} matches in {cfg['minutes']} min  /{cfg['regex']}/")
+    print("  metric rules:")
+    for rule, cfg in METRIC_RULES.items():
+        print(f"    {rule:<20} {cfg['metric']} {cfg['kind']} {cfg['threshold']} over {cfg['minutes']} min")
+    print(f"  security_ip_spike    >= {SECURITY_MIN_PER_IP} failed-auth/4xx/5xx lines from one IP in {SECURITY_MINUTES} min")
+    print(f"  certificate_expiry   certificate expires within {', '.join(str(d) for d in CERT_THRESHOLD_DAYS)} days")
 
 
 def cmd_incidents(conn):
@@ -680,9 +1079,9 @@ def cmd_incidents(conn):
     if not rows:
         print("  (no incidents yet)")
         return
-    print(f"  {'id':<4} {'service':<10} {'rule':<16} {'fingerprint':<14} {'status':<10} {'severity':<8} started_at")
+    print(f"  {'id':<4} {'service':<10} {'rule':<20} {'fingerprint':<14} {'status':<10} {'severity':<8} started_at")
     for r in rows:
-        print(f"  {r[0]:<4} {r[1]:<10} {r[2] or '-':<16} {r[3] or '-':<14} {r[4]:<10} {r[5]:<8} {r[6]}")
+        print(f"  {r[0]:<4} {r[1]:<10} {r[2] or '-':<20} {r[3] or '-':<14} {r[4]:<10} {r[5]:<8} {r[6]}")
 
 
 def cmd_signature(conn, incident_id):
@@ -712,36 +1111,42 @@ def cmd_templates(service_name):
 
 
 def cmd_resolve(conn, incident_id):
+    """Human closes the incident: root cause + resolution are both required."""
     with conn.cursor() as cur:
-        cur.execute("SELECT status, title FROM incidents WHERE id = %s;", (incident_id,))
+        cur.execute("SELECT status, title, description FROM incidents WHERE id = %s;", (incident_id,))
         row = cur.fetchone()
     if row is None:
         print(f"  no incident with id {incident_id}")
         return
-    status, title = row
-    if status != "open":
-        print(f"  incident {incident_id} is already '{status}', nothing to resolve")
+    status, title, description = row
+    if status == "resolved":
+        print(f"  incident {incident_id} is already resolved, nothing to do")
         return
 
     print(f"  resolving incident {incident_id}: \"{title}\"")
-    root_cause = input("  root cause: ").strip()
-    if not root_cause:
-        print("  root cause is required - aborted")
+    if description:
+        print(f"  symptoms: {description}")
+    root_cause = input("  root cause (what was wrong): ").strip()
+    resolution = input("  resolution (what fixed it): ").strip()
+    try:
+        ok = resolve_incident(incident_id, root_cause, resolution)
+    except ValueError as e:
+        print(f"  not saved: {e}")
         return
-    close_incident(conn, incident_id, root_cause)
+    print("  >>> INCIDENT RESOLVED, root cause and resolution saved (confirmed)" if ok
+          else "  nothing updated (already resolved?)")
 
 
 def cmd_logs(conn, service_name, n=10):
-    service_id = get_service_id(conn, service_name)
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT timestamp, level, message, latency_ms FROM application_logs
-            WHERE service_id = %s ORDER BY timestamp DESC LIMIT %s;
-            """,
-            (service_id, n),
-        )
-        rows = cur.fetchall()
+    result = ch_client.query(
+        f"""
+        SELECT timestamp, level, message, latency_ms FROM {LOGS_TABLE}
+        WHERE service_name = %(service)s
+        ORDER BY timestamp DESC LIMIT %(limit)s;
+        """,
+        parameters={"service": service_name, "limit": n},
+    )
+    rows = result.result_rows
     if not rows:
         print("  (no logs yet for this service)")
         return
@@ -764,7 +1169,7 @@ def repl():
 
     register_on_incident_opened(handle_incident_opened)
     start_log_monitoring(interval_seconds=30)
-    print("[console] log monitor started (checks application_logs every 30s), agent registered")
+    print("[console] log monitor started (checks ClickHouse application_logs every 30s), agent registered")
     print("[console] connected. Type 'help' for commands, 'quit' to exit.\n")
 
     while True:
@@ -787,38 +1192,6 @@ def repl():
             elif cmd == "help":
                 print(HELP)
 
-            elif cmd in ("error", "warn", "info"):
-                if len(rest) < 2:
-                    print(f"  usage: {cmd} <service> <message...>")
-                    continue
-                service_name, message = rest[0], " ".join(rest[1:])
-                write_log(conn, service_name, cmd, message)
-                print(f"  wrote {cmd.upper()} log for {service_name}: \"{message}\"")
-                service_id = get_service_id(conn, service_name)
-                check_service(conn, service_id, service_name, quiet_if_nothing=False)
-
-            elif cmd == "burst":
-                if len(rest) < 3:
-                    print("  usage: burst <n> <service> <message...>")
-                    continue
-                n = int(rest[0])
-                service_name, message = rest[1], " ".join(rest[2:])
-                for _ in range(n):
-                    write_log(conn, service_name, "ERROR", message)
-                print(f"  wrote {n} ERROR logs for {service_name}: \"{message}\"")
-                service_id = get_service_id(conn, service_name)
-                check_service(conn, service_id, service_name, quiet_if_nothing=False)
-
-            elif cmd == "latency":
-                if len(rest) < 2:
-                    print("  usage: latency <service> <ms>")
-                    continue
-                service_name, ms = rest[0], float(rest[1])
-                write_log(conn, service_name, "INFO", "request completed", latency_ms=ms)
-                print(f"  wrote INFO log for {service_name} with latency_ms={ms}")
-                service_id = get_service_id(conn, service_name)
-                check_service(conn, service_id, service_name, quiet_if_nothing=False)
-
             elif cmd == "check":
                 if rest:
                     service_name = rest[0]
@@ -826,6 +1199,9 @@ def repl():
                     check_service(conn, service_id, service_name, quiet_if_nothing=False)
                 else:
                     evaluate_all_services(conn)
+
+            elif cmd == "rules":
+                cmd_rules()
 
             elif cmd == "incidents":
                 cmd_incidents(conn)
