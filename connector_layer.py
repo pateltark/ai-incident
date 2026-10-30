@@ -75,30 +75,54 @@ def get_level(message):
     return "WARN" if level == "WARNING" else level
 
 
+
+
+def get_service_id_by_name(conn, name):
+    """Helper to look up or insert a service dynamically by name."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM services WHERE name = %s", (name,))
+        row = cur.fetchone()
+        if row:
+            return row[0]
+
+        cur.execute(
+            """
+            INSERT INTO services (name, environment)
+            VALUES (%s, %s)
+            RETURNING id
+            """,
+            (name, "production"),
+        )
+        conn.commit()
+        return cur.fetchone()[0]
+
+
+
 def save_logs(logs):
     if not logs:
         return
 
-    # 1. Get service_id from PostgreSQL (Control Plane)
     conn = get_db_connection()
     try:
-        service_id = get_service_id(conn)
-    finally:
-        conn.close()
-
-    try:
-        # 2. Prepare batch rows matching your exact ClickHouse table schema:
-        # (id, service_id, level, message, latency_ms, request_id, timestamp)
         ch_rows = []
         for message, timestamp in logs:
-            log_id = int(time.time_ns() // 1000)  # Unique pseudo-ID
+            log_id = int(time.time_ns() // 1000)
             level = get_level(message)
-            latency_ms = None  # Default null if not parsed
-            request_id = ""    # Default empty string if not parsed
+            latency_ms = None
+            request_id = ""
             
+            # Extract service name dynamically from brackets e.g. [checkout]
+            service_match = re.search(r"\[(.*?)\]", message)
+            target_service = service_match.group(1) if service_match else "my-service"
+            
+            # Get the correct service_id for this specific service name
+            service_id = get_service_id_by_name(conn, target_service)
+
+            # --- FIX: Include target_service string here ---
             ch_rows.append((
                 log_id,
                 service_id,
+                target_service, 
                 level,
                 message,
                 latency_ms,
@@ -106,12 +130,12 @@ def save_logs(logs):
                 timestamp
             ))
 
-        # 3. High-performance batch insert into ClickHouse (Log Engine)
+        # --- FIX: Include "service_name" in column_names ---
         ch_client.insert(
             "application_logs",
             ch_rows,
             column_names=[
-                "id", "service_id", "level", "message", 
+                "id", "service_id", "service_name", "level", "message", 
                 "latency_ms", "request_id", "timestamp"
             ]
         )
@@ -120,6 +144,9 @@ def save_logs(logs):
     except Exception as e:
         print(f"Error saving logs to ClickHouse: {e}")
         raise
+    finally:
+        conn.close()
+
 
 
 def tail_local_logs(file_handle):
@@ -194,7 +221,21 @@ if __name__ == "__main__":
                 f.seek(0, os.SEEK_END)
                 print(f"Tailing '{LOCAL_LOG_FILE}'. Press Ctrl+C to stop.")
 
+                last_size = f.tell()
+
                 while True:
+                    # Check if file was truncated or cleared (e.g. Clear-Content app.log)
+                    try:
+                        current_size = os.path.getsize(LOCAL_LOG_FILE)
+                        if current_size < last_size:
+                            print("[Tailer] Log file truncation detected. Resetting pointer to end.")
+                            f.seek(0, os.SEEK_END)
+                            last_size = f.tell()
+                        else:
+                            last_size = current_size
+                    except OSError:
+                        pass
+
                     new_logs = tail_local_logs(f)
                     if new_logs:
                         save_logs(new_logs)
@@ -214,4 +255,4 @@ if __name__ == "__main__":
             raise ValueError("LOG_SOURCE must be 'local' or 'cloudwatch'.")
 
     except KeyboardInterrupt:
-        print("\nLog ingestion stopped gracefully by user (Ctrl+C).")
+        print("\nLog ingestion stopped gracefully by user (Ctrl+C).")   

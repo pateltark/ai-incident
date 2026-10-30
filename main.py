@@ -53,8 +53,18 @@ def find_log(state: InvestigationState) -> dict:
         "fingerprint": state.fingerprint,
         "started_at": state.started_at,
         "resolved_at": state.resolved_at,
+        
     }
+
     evidence = fetch_evidence(incident)
+
+    if evidence:
+        print (evidence)
+
+    else:
+
+        print ("Nothing")
+
     return {"evidence": evidence}
 
 
@@ -256,5 +266,5 @@ def handle_incident_opened(alert: dict):
 
 
 if __name__ == "__main__":          # python agent.py -> test one incident by hand
-    final_state = investigate(33)
+    final_state = investigate(1161)
     print(final_state["report"])
