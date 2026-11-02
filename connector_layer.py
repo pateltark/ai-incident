@@ -8,6 +8,7 @@ import psycopg2
 import clickhouse_connect
 from dotenv import load_dotenv
 from datetime import datetime, timezone
+import json
 
 load_dotenv()
 
@@ -97,6 +98,92 @@ def get_service_id_by_name(conn, name):
         return cur.fetchone()[0]
 
 
+import json
+
+def parse_log_line(message):
+    """
+    Universal log parser that handles JSON, bracketed formats, key-value logs, 
+    and unstructured text streams automatically.
+    """
+    level = "INFO"
+    target_service = SERVICE_NAME
+    latency_ms = None
+    request_id = ""
+
+    clean_msg = message.strip()
+
+    # --- Strategy 1: JSON-Structured Logs (Lambda Powertools, CloudTrail, Docker JSON) ---
+    if clean_msg.startswith("{") and clean_msg.endswith("}"):
+        try:
+            data = json.loads(clean_msg)
+            
+            # Extract Level
+            raw_level = data.get("level") or data.get("severity") or data.get("logLevel")
+            if raw_level:
+                level = get_level(str(raw_level))
+
+            # Extract Service Name from common JSON keys
+            target_service = (
+                data.get("service") or 
+                data.get("service_name") or 
+                data.get("serviceName") or 
+                data.get("function_name") or 
+                data.get("functionName")
+            )
+            if not target_service and "eventSource" in data:
+                target_service = data["eventSource"].split(".")[0]
+
+            # Extract Request ID if present
+            request_id = str(data.get("request_id") or data.get("requestId") or data.get("function_request_id") or "")
+            
+            # Extract Latency if present
+            if "latency_ms" in data:
+                try: latency_ms = float(data["latency_ms"])
+                except: pass
+
+            return level, target_service or SERVICE_NAME, message, latency_ms, request_id
+        except json.JSONDecodeError:
+            pass  # Fall back to text parsing if JSON is malformed
+
+    # --- Strategy 2: Text / Bracketed Logs (CloudWatch, Python/Java apps, ALB, Custom) ---
+    
+    # 1. Detect Log Level anywhere in the string
+    level = get_level(message)
+
+    # 2. Extract Service Name from brackets [service-name], ignoring levels like [ERROR]
+    brackets = re.findall(r"\[(.*?)\]", message)
+    if brackets:
+        valid_candidates = []
+        for b in brackets:
+            b_upper = b.upper()
+            # Skip common non-service bracket items
+            if b_upper in ("INFO", "WARN", "WARNING", "ERROR", "DEBUG", "CRITICAL", "FATAL", "MAIN-THREAD") or "THREAD" in b_upper:
+                continue
+            valid_candidates.append(b)
+        
+        if valid_candidates:
+            target_service = valid_candidates[0] # Takes the first non-level bracket (e.g. [ecs-cluster])
+
+    # 3. If no service found via brackets, look for key-value formats like service=foo or srv=foo
+    if target_service == SERVICE_NAME:
+        kv_match = re.search(r'\b(?:service|app|service_name)=([a-zA-Z0-9\-_]+)', message, re.IGNORECASE)
+        if kv_match:
+            target_service = kv_match.group(1)
+
+    # 4. Extract Latency if formatted like latency_ms=123 or latency=45ms
+    lat_match = re.search(r'\blatency(?:_ms)?\s*[:=]\s*([0-9.]+)', message, re.IGNORECASE)
+    if lat_match:
+        try:
+            latency_ms = float(lat_match.group(1))
+        except ValueError:
+            pass
+
+    # 5. Clean up AWS service extension suffixes if present (e.g. s3.amazonaws.com -> s3)
+    if target_service and target_service.endswith(".amazonaws.com"):
+        target_service = target_service.split(".")[0]
+
+    return level, target_service or SERVICE_NAME, message, latency_ms, request_id
+
 
 def save_logs(logs):
     if not logs:
@@ -107,30 +194,24 @@ def save_logs(logs):
         ch_rows = []
         for message, timestamp in logs:
             log_id = int(time.time_ns() // 1000)
-            level = get_level(message)
-            latency_ms = None
-            request_id = ""
             
-            # Extract service name dynamically from brackets e.g. [checkout]
-            service_match = re.search(r"\[(.*?)\]", message)
-            target_service = service_match.group(1) if service_match else "my-service"
+            # Pass through the universal parser
+            level, target_service, clean_message, latency_ms, request_id = parse_log_line(message)
             
-            # Get the correct service_id for this specific service name
+            # Dynamically resolve or create the service ID in Postgres[cite: 3]
             service_id = get_service_id_by_name(conn, target_service)
 
-            # --- FIX: Include target_service string here ---
             ch_rows.append((
                 log_id,
                 service_id,
                 target_service, 
                 level,
-                message,
+                clean_message,
                 latency_ms,
                 request_id,
                 timestamp
             ))
 
-        # --- FIX: Include "service_name" in column_names ---
         ch_client.insert(
             "application_logs",
             ch_rows,
@@ -139,7 +220,7 @@ def save_logs(logs):
                 "latency_ms", "request_id", "timestamp"
             ]
         )
-        print(f"Pushed {len(logs)} new log(s) to ClickHouse application_logs.")
+        print(f"Pushed {len(logs)} universally parsed log(s) to ClickHouse.")
 
     except Exception as e:
         print(f"Error saving logs to ClickHouse: {e}")

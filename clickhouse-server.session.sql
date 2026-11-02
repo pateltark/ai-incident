@@ -14,11 +14,12 @@
 
 -- SELECT count() FROM incident_copilot.application_logs;
 
-SELECT timestamp, service_name, level, message, latency_ms 
-FROM incident_copilot.application_logs 
-ORDER BY timestamp DESC 
-LIMIT 100;
+-- SELECT timestamp, service_name, level, message, latency_ms 
+-- FROM incident_copilot.application_logs 
+-- ORDER BY timestamp DESC 
+-- LIMIT 100;
 
--- TRUNCATE TABLE incident_copilot.application_logs;
+TRUNCATE TABLE incident_copilot.application_logs;
 
 -- ALTER TABLE incident_copilot.application_logs ADD COLUMN service_name LowCardinality(String);
+
