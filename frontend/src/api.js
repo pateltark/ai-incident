@@ -28,6 +28,8 @@ export const api = {
   resolve: (id, body) => req(`/incidents/${id}/resolve`, { method: "POST", body: JSON.stringify(body) }),
   investigate: (id) => req(`/incidents/${id}/investigate`, { method: "POST" }),
   logs: (p) => req("/logs" + qs(p)),
+  live: (p) => req("/live" + qs(p)),
+  ingest: () => req("/ingest/status"),
   services: () => req("/services"),
   rules: () => req("/rules"),
 };

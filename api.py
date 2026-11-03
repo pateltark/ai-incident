@@ -10,6 +10,7 @@ It only READS from Postgres / ClickHouse, plus two actions:
   - POST /api/incidents/{id}/investigate   (re-run the LangGraph agent)
 The detector (watch.py) keeps running as its own process.
 """
+import os
 import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
@@ -19,7 +20,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from db import (get_connection, ch_query, resolve_incident, parse_report,
+from db import (get_connection, ch_query, resolve_incident,
                 get_incident_embedding, find_similar_incidents,
                 LOG_PATTERN_RULES, METRIC_RULES)
 
@@ -27,6 +28,7 @@ LOGS_TABLE = "incident_copilot.application_logs"
 ERROR_LEVELS = ("ERROR", "CRITICAL", "FATAL")
 TIMELINE_BACK_MIN = 60
 TIMELINE_MAX_MIN = 240
+INGEST_ENABLED = os.getenv("INGEST_ENABLED", "1") == "1"
 
 
 # --------------------------------------------------------------------------
@@ -62,6 +64,16 @@ def _num(x):
     return round(float(x), 1)
 
 
+def _bullets(text):
+    """'- a\n- b' -> ['a', 'b']"""
+    out = []
+    for line in (text or "").splitlines():
+        line = line.strip().lstrip("-*\u2022").strip()
+        if line:
+            out.append(line)
+    return out
+
+
 # --------------------------------------------------------------------------
 # app
 # --------------------------------------------------------------------------
@@ -71,11 +83,24 @@ async def lifespan(app):
     # The AI report (root cause / solution / confidence) is stored as ONE text
     # column, separate from the human-confirmed root_cause / resolution columns.
     with get_connection() as cur:
-        cur.execute("ALTER TABLE public.incidents ADD COLUMN IF NOT EXISTS ai_report text;")
+        cols = ["ai_symptoms", "ai_root_cause", "ai_solution", "ai_evidence", "ai_confidence"]
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'incidents' AND column_name = ANY(%s);",
+            (cols,),
+        )
+        have = {r[0] for r in cur.fetchall()}
+        missing = [c for c in cols if c not in have]
+        if missing:     # ALTER TABLE locks the table, so only run it when really needed
+            cur.execute("ALTER TABLE public.incidents " +
+                        ", ".join(f"ADD COLUMN IF NOT EXISTS {c} text" for c in missing) + ";")
+    if INGEST_ENABLED:
+        from ingest import start_ingest     # app.log -> UI -> ClickHouse -> incidents
+        start_ingest()
     yield
 
 
-app = FastAPI(title="AI Incident", lifespan=lifespan)
+app = FastAPI(title="AI Incident Copilot API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -102,7 +127,7 @@ def list_incidents(
 ):
     sql = """
         SELECT i.id, s.name, i.rule, i.title, i.severity, i.status,
-               i.started_at, i.resolved_at
+               i.started_at, i.resolved_at, i.ai_confidence
         FROM public.incidents i JOIN public.services s ON s.id = i.service_id
         WHERE 1 = 1
     """
@@ -125,7 +150,8 @@ def list_incidents(
 
     return [
         {"id": r[0], "service": r[1], "rule": r[2], "title": r[3], "severity": r[4],
-         "status": r[5], "started_at": iso(r[6]), "resolved_at": iso(r[7])}
+         "status": r[5], "started_at": iso(r[6]), "resolved_at": iso(r[7]),
+         "ai_confidence": r[8]}
         for r in rows
     ]
 
@@ -181,7 +207,8 @@ def incident_detail(incident_id: int):
             SELECT i.id, s.name, i.rule, i.title, i.severity, i.status,
                    i.started_at, i.resolved_at, i.fingerprint, i.description,
                    i.evidence, i.signature_text, i.root_cause, i.resolution,
-                   i.resolution_confidence, i.ai_report
+                   i.resolution_confidence, i.ai_symptoms, i.ai_root_cause,
+                   i.ai_solution, i.ai_evidence, i.ai_confidence
             FROM public.incidents i JOIN public.services s ON s.id = i.service_id
             WHERE i.id = %s;
             """,
@@ -192,7 +219,8 @@ def incident_detail(incident_id: int):
         raise HTTPException(404, f"incident {incident_id} not found")
 
     (iid, service, rule, title, severity, status, started_at, resolved_at, fp,
-     description, evidence, signature, root_cause, resolution, confidence, ai_report) = r
+     description, evidence, signature, root_cause, resolution, confidence,
+     ai_symptoms, ai_root_cause, ai_solution, ai_evidence, ai_confidence) = r
 
     start = naive_utc(started_at)
     end = naive_utc(resolved_at) if resolved_at else now_naive()
@@ -213,8 +241,11 @@ def incident_detail(incident_id: int):
         print(f"[api] similar-incident search failed for {incident_id}: {e}")
 
     ai = None
-    if ai_report:
-        ai = {**parse_report(ai_report), "report": ai_report}
+    if any([ai_symptoms, ai_root_cause, ai_solution, ai_evidence, ai_confidence]):
+        ai = {
+            "symptoms": ai_symptoms, "root_cause": ai_root_cause, "solution": ai_solution,
+            "evidence_points": _bullets(ai_evidence), "confidence": ai_confidence,
+        }
 
     return {
         "id": iid, "service": service, "rule": rule, "title": title,
@@ -308,6 +339,31 @@ def logs(
     out = [{"ts": iso(ts), "service": svc, "level": lvl, "message": msg,
             "latency_ms": _num(lat)} for ts, svc, lvl, msg, lat in rows]
     return {"logs": out, "cursor": out[-1]["ts"] if out else after}
+
+
+# --------------------------------------------------------------------------
+# live tail of app.log (filled by ingest.py, before the lines reach ClickHouse)
+# --------------------------------------------------------------------------
+
+@app.get("/api/live")
+def live(
+    after: Optional[int] = None,
+    service: Optional[str] = None,
+    level: Optional[str] = None,
+    limit: int = Query(200, ge=1, le=1000),
+):
+    if not INGEST_ENABLED:
+        raise HTTPException(503, "ingest is disabled (INGEST_ENABLED=0)")
+    from ingest import get_live
+    return get_live(after, service, level, limit)
+
+
+@app.get("/api/ingest/status")
+def ingest_status():
+    if not INGEST_ENABLED:
+        return {"running": False, "disabled": True}
+    from ingest import STATUS
+    return STATUS
 
 
 # --------------------------------------------------------------------------

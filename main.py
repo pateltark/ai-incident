@@ -18,6 +18,37 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
+# The AI suggestion is stored on the incident row in 5 columns, separate from the
+# human-confirmed root_cause / resolution (the LLM only suggests).
+AI_COLUMNS = ["ai_symptoms", "ai_root_cause", "ai_solution", "ai_evidence", "ai_confidence"]
+
+
+def ensure_ai_columns():
+    """Create the ai_* columns ONCE, at startup, and only if they are missing.
+
+    ALTER TABLE takes an exclusive lock on `incidents` even when the column already
+    exists, so it must never run while an incident is being handled (it waits for
+    every open transaction and blocks the agent's last step).
+    """
+    with get_connection() as cur:
+        cur.execute(
+            """
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'incidents'
+              AND column_name = ANY(%s);
+            """,
+            (AI_COLUMNS,),
+        )
+        have = {r[0] for r in cur.fetchall()}
+        missing = [c for c in AI_COLUMNS if c not in have]
+        if missing:
+            cur.execute("ALTER TABLE public.incidents " +
+                        ", ".join(f"ADD COLUMN IF NOT EXISTS {c} text" for c in missing) + ";")
+
+
+ensure_ai_columns()
+
+
 # 1. State definition with report field added
 class InvestigationState(BaseModel):
     incident_id: int
@@ -204,6 +235,20 @@ def save_report(state: InvestigationState) -> dict:
         symptoms=state.symptoms,
         evidence=state.evidence_summary,
     )
+    with get_connection() as cur:
+        cur.execute(
+            """
+            UPDATE public.incidents
+            SET ai_symptoms = %s,
+                ai_root_cause = %s,
+                ai_solution = %s,
+                ai_evidence = %s,
+                ai_confidence = %s
+            WHERE id = %s;
+            """,
+            (state.symptoms, state.root_cause, state.solution,
+             state.evidence_summary, state.confidence, state.incident_id),
+        )
     return {}
 
 # Graph Definition

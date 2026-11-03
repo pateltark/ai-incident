@@ -13,6 +13,7 @@ export default function LiveLogs() {
   const pausedRef = useRef(false);
   const box = useRef(null);
   const { data: svc } = usePoll(() => api.services(), 30000);
+  const { data: ing } = usePoll(() => api.ingest(), 5000);
 
   pausedRef.current = paused;
 
@@ -24,7 +25,7 @@ export default function LiveLogs() {
     const tick = async () => {
       if (pausedRef.current) return;
       try {
-        const r = await api.logs({ service, level, after: cursor.current, limit: 200 });
+        const r = await api.live({ service, level, after: cursor.current, limit: 200 });
         if (!alive) return;
         setError("");
         if (r.logs.length) {
@@ -37,7 +38,7 @@ export default function LiveLogs() {
     };
 
     tick();
-    const t = setInterval(tick, 2000);
+    const t = setInterval(tick, 1000);
     return () => {
       alive = false;
       clearInterval(t);
@@ -69,6 +70,12 @@ export default function LiveLogs() {
           </button>
         </div>
       </div>
+      <div className="muted">
+        {ing?.running
+          ? `Reading ${ing.file} - ${ing.lines_seen} line(s) since the API started`
+          : "Ingest is not running (check INGEST_ENABLED and the API terminal)."}
+      </div>
+      {ing?.last_error && <div className="error">Ingest error: {ing.last_error}</div>}
       {error && <div className="error">Could not load logs: {error}</div>}
       <div className="terminal mono" ref={box}>
         {lines.length === 0 && <span className="muted">Waiting for logs...</span>}

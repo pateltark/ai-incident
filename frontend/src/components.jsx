@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 // Small shared pieces: badges, time helpers, the error chart.
 
 export const hhmm = (iso) => (iso ? iso.slice(11, 16) : "-");
@@ -14,6 +16,21 @@ export function timeAgo(iso) {
 
 export function Badge({ kind, children }) {
   return <span className={`badge ${kind}`}>{String(children).toUpperCase()}</span>;
+}
+
+export const ConfidenceBadge = ({ value }) =>
+  value ? <Badge kind={`conf-${value.toUpperCase()}`}>{`${value} confidence`}</Badge> : null;
+
+/** Plain text where "#12" becomes a link to incident 12. */
+export function LinkedText({ text }) {
+  if (!text) return <span className="muted">-</span>;
+  return (
+    <>
+      {text.split(/(#\d+)/g).map((part, i) =>
+        /^#\d+$/.test(part) ? <Link key={i} to={`/incidents/${part.slice(1)}`}>{part}</Link> : <span key={i}>{part}</span>
+      )}
+    </>
+  );
 }
 
 export const SeverityBadge = ({ value }) => <Badge kind={`sev-${value}`}>{value}</Badge>;

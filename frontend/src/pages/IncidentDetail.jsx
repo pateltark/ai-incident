@@ -1,10 +1,45 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, usePoll } from "../api.js";
-import { ErrorChart, SeverityBadge, StatusBadge, stamp } from "../components.jsx";
+import {
+  ConfidenceBadge, ErrorChart, LinkedText, SeverityBadge, StatusBadge, stamp,
+} from "../components.jsx";
 
 const NO_ANSWER = /^(unable to determine|no specific fix)/i;
 const usable = (t) => (t && !NO_ANSWER.test(t.trim()) ? t.trim() : "");
+
+function AiCard({ ai, onRerun, rerunMsg }) {
+  return (
+    <section className="ai-card">
+      <div className="ai-head">
+        <span className="ai-label">AI INVESTIGATION</span>
+        <ConfidenceBadge value={ai?.confidence} />
+        <button type="button" className="btn ghost right" onClick={onRerun}>
+          {ai ? "Re-run investigation" : "Run investigation"}
+        </button>
+      </div>
+
+      {!ai ? (
+        <p className="muted">{rerunMsg || "No AI report for this incident yet. It appears here when the agent finishes."}</p>
+      ) : (
+        <>
+          <div className="ai-grid">
+            <div><div className="label">Symptoms</div><p><LinkedText text={ai.symptoms} /></p></div>
+            <div><div className="label">Root cause (suggested)</div><p><LinkedText text={ai.root_cause} /></p></div>
+            <div><div className="label">Solution (suggested)</div><p><LinkedText text={ai.solution} /></p></div>
+          </div>
+          {ai.evidence_points.length > 0 && (
+            <div className="ai-section">
+              <div className="label">Evidence behind this</div>
+              <ul className="points">{ai.evidence_points.map((e, i) => <li key={i}><LinkedText text={e} /></li>)}</ul>
+            </div>
+          )}
+          {rerunMsg && <p className="muted">{rerunMsg}</p>}
+        </>
+      )}
+    </section>
+  );
+}
 
 export default function IncidentDetail() {
   const { id } = useParams();
@@ -14,9 +49,10 @@ export default function IncidentDetail() {
   const [resolution, setResolution] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
+  const [rerunMsg, setRerunMsg] = useState("");
   const prefilled = useRef(false);
 
-  // Pre-fill the form once with the AI suggestion (the human can edit it).
+  // Pre-fill the resolve form once with the AI suggestion (the human edits it).
   useEffect(() => {
     if (inc?.ai && !prefilled.current) {
       prefilled.current = true;
@@ -43,8 +79,12 @@ export default function IncidentDetail() {
   };
 
   const rerun = async () => {
+    setFormError("");
     try {
       await api.investigate(id);
+      prefilled.current = false;       // use the new suggestion for the form
+      setRerunMsg("Investigation started. The report updates here in a few seconds.");
+      setTimeout(() => setRerunMsg(""), 20000);
     } catch (err) {
       setFormError(err.message);
     }
@@ -60,29 +100,8 @@ export default function IncidentDetail() {
         <span className="muted right">#{inc.id} &middot; {inc.service} &middot; {stamp(inc.started_at)}</span>
       </header>
 
-      {/* AI suggestion */}
-      <section className="ai-card">
-        <div className="ai-head">
-          <span className="ai-label">AI SUGGESTION</span>
-          {inc.ai?.confidence && <span className="muted">Confidence: {inc.ai.confidence}</span>}
-          <button type="button" className="btn ghost right" onClick={rerun}>Re-run investigation</button>
-        </div>
-        {inc.ai ? (
-          <div className="ai-grid">
-            <div><div className="label">Symptoms</div><p>{inc.ai.symptoms || inc.symptoms || "-"}</p></div>
-            <div><div className="label">Root cause</div><p>{inc.ai.root_cause || "-"}</p></div>
-            <div><div className="label">Solution</div><p>{inc.ai.solution || "-"}</p></div>
-          </div>
-        ) : (
-          <p className="muted">No AI report yet. It appears here when the investigation finishes.</p>
-        )}
-        {inc.ai?.evidence && (
-          <details>
-            <summary className="label">Evidence cited</summary>
-            <pre className="plain">{inc.ai.evidence}</pre>
-          </details>
-        )}
-      </section>
+      <AiCard ai={inc.ai} onRerun={rerun} rerunMsg={rerunMsg} />
+      {formError && <div className="error">{formError}</div>}
 
       <div className="two-col">
         <section className="card">
@@ -92,7 +111,7 @@ export default function IncidentDetail() {
         <section className="card">
           <h2>Similar past incidents</h2>
           {inc.similar.length === 0 ? (
-            <p className="muted">No resolved incidents match yet. Resolving this one makes it a reference for the future.</p>
+            <p className="muted">No resolved incidents matched. Resolving this one makes it a reference for the future.</p>
           ) : (
             inc.similar.map((s) => (
               <div key={s.incident_id} className="similar">
@@ -121,13 +140,12 @@ export default function IncidentDetail() {
         </div>
       </section>
 
-      {/* Resolve form, or the confirmed answer once resolved */}
       {inc.status === "resolved" && inc.confirmed ? (
         <section className="card">
           <h2>Resolved <span className="muted">&middot; {stamp(inc.resolved_at)} &middot; {inc.confirmed.confidence}</span></h2>
           <div className="ai-grid two">
-            <div><div className="label">Root cause</div><p>{inc.confirmed.root_cause}</p></div>
-            <div><div className="label">Resolution</div><p>{inc.confirmed.resolution}</p></div>
+            <div><div className="label">Root cause (confirmed)</div><p>{inc.confirmed.root_cause}</p></div>
+            <div><div className="label">Resolution (confirmed)</div><p>{inc.confirmed.resolution}</p></div>
           </div>
         </section>
       ) : (
@@ -141,7 +159,6 @@ export default function IncidentDetail() {
               <input value={resolution} onChange={(e) => setResolution(e.target.value)} required />
             </label>
           </div>
-          {formError && <div className="error">{formError}</div>}
           <button className="btn" disabled={busy || !rootCause.trim() || !resolution.trim()}>
             {busy ? "Saving..." : "Mark as resolved"}
           </button>

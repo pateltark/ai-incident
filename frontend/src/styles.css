@@ -74,3 +74,13 @@ dl { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
   .brand { display: none; } .main { padding: 16px; }
   .ai-grid, .ai-grid.two, .two-col, .form-grid { grid-template-columns: 1fr; }
 }
+
+.badge.conf-HIGH { background: #17302a; color: #6fd6a5; border-color: #245c47; }
+.badge.conf-MEDIUM { background: #3a2d14; color: #f5c066; border-color: #6b5320; }
+.badge.conf-LOW { background: var(--panel2); color: #c9d0db; border-color: var(--line2); }
+.ai-status { font-size: 12px; color: var(--muted); }
+.ai-status.running { color: var(--blue); } .ai-status.failed { color: var(--red); }
+.ai-section { border-top: 1px solid #23406e; padding-top: 12px; }
+ul.points { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: 13px; }
+pre.json { background: #0a0c10; border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow: auto; max-height: 360px; margin: 8px 0 0; font-size: 12px; }
