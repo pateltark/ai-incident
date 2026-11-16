@@ -1554,3 +1554,32 @@ def fetch_evidence(incident):
         result.setdefault("evidence", {}).setdefault("notes", []).append(
             f"Could not read change_events: {e}")
     return result
+
+
+def open_incident(service_id, rule, title, severity, started_at, fingerprint=None):
+    key = f"{service_id}:{rule}" + (f":{fingerprint}" if rule == "new_error_type" else "")
+    with get_connection() as cur:
+        cur.execute(
+            """
+            INSERT INTO public.incidents
+                (service_id, rule, title, severity, status, started_at,
+                 fingerprint, dedup_key, last_seen_at)
+            VALUES (%s, %s, %s, %s, 'open', %s, %s, %s, now())
+            ON CONFLICT (dedup_key) WHERE status <> 'resolved' DO NOTHING
+            RETURNING id;
+            """,
+            (service_id, rule, title, severity, started_at, fingerprint, key),
+        )
+        row = cur.fetchone()
+        if row:
+            return row[0], True          # new incident
+        cur.execute(
+            """
+            UPDATE public.incidents
+            SET last_seen_at = now(), occurrences = COALESCE(occurrences,1) + 1
+            WHERE dedup_key = %s AND status <> 'resolved'
+            RETURNING id;
+            """,
+            (key,),
+        )
+        return cur.fetchone()[0], False  # existing incident, just bumped

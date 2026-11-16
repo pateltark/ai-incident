@@ -22,7 +22,7 @@ from connector_layer import LOCAL_LOG_FILE, parse_log_line, save_logs, tail_loca
 from db import LOG_PATTERN_RULES
 from main import handle_incident_opened
 from watch import (ERROR_LEVELS, connect, ensure_schema, ensure_services, fingerprint,
-                   get_service_id, register_on_incident_opened, try_open_incident)
+                   get_service_id, register_on_incident_opened, try_open_incident, incident_fingerprint)
 
 INGEST_POLL = float(os.getenv("INGEST_POLL", "1"))     # seconds between file checks
 BUFFER_SIZE = 2000
@@ -94,7 +94,7 @@ def _detect(entry):
             break
     try:
         try_open_incident(
-            conn, get_service_id(conn, service), service, rule, fingerprint(msg),
+            conn, get_service_id(conn, service), service, rule, incident_fingerprint(rule, service, msg),
             f"{rule.replace('_', ' ').capitalize()} in {service}", f'"{msg}"',
         )
     except (psycopg2.OperationalError, psycopg2.InterfaceError):

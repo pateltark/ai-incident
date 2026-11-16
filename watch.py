@@ -1,5 +1,5 @@
 """
-loggs.py
+watch.py
 
 Continuous Detector Engine + read-only console.  (ClickHouse version)
 
@@ -848,6 +848,15 @@ def evaluate_all_services(conn):
     return any_fired
 
 
+def incident_fingerprint(rule, service_name, message):
+    """new_error_type -> one incident per distinct error message.
+    every other rule  -> one incident per (service, rule)."""
+    if rule == "new_error_type":
+        return fingerprint(message)
+    return fingerprint(f"{rule}:{service_name}")
+
+
+
 def monitor_application_logs(poll_interval=5.0):
     conn = connect()
     print("[Log Monitor] Started real-time live log tailer...")
@@ -916,7 +925,7 @@ def monitor_application_logs(poll_interval=5.0):
 
                         try_open_incident(
                             conn, service_id, service_name, matched_rule,
-                            fingerprint(clean_message),
+                            incident_fingerprint(matched_rule, service_name, clean_message),
                             f"{matched_rule.replace('_', ' ').capitalize()} in {service_name}",
                             f'"{clean_message}"'
                         )
