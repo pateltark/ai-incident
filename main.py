@@ -11,7 +11,11 @@ from db import (fetch_evidence, parse_report, save_investigation_result,
                 get_incident_embedding, find_similar_incidents)
 from db import get_connection
 import threading
+import queue
+import time
 
+_agent_q = queue.Queue()
+_worker_started = False
 
 load_dotenv()
 
@@ -292,22 +296,49 @@ def investigate(incident_id: int) -> dict:
     return app.invoke(load_state(incident_id))
 
 
+def _agent_worker():
+    while True:
+        alert = _agent_q.get()
+        incident_id = alert["incident_id"]
+        for attempt in range(1, 4):
+            try:
+                print(f"\n[agent] investigating incident {incident_id} "
+                      f"({alert['service_name']}/{alert['rule']}), attempt {attempt} ...")
+                final = investigate(incident_id)
+                print(f"\n===== INCIDENT REPORT (incident {incident_id}) =====\n"
+                      f"{final['report']}\n=====\n")
+                break
+            except Exception as e:
+                print(f"[agent] incident {incident_id} attempt {attempt} failed: {e}")
+                time.sleep(20 * attempt)      # wait longer after every failure
+        time.sleep(3)                          # small gap between incidents
+
+
 def handle_incident_opened(alert: dict):
-    """Called by console.py when an incident opens. Runs in a background thread
-    so the console doesn't freeze while the LLM works."""
-    incident_id = alert["incident_id"]
+    """Called when an incident opens. Puts it in a queue; ONE worker investigates them in order."""
+    global _worker_started
+    if not _worker_started:
+        _worker_started = True
+        threading.Thread(target=_agent_worker, daemon=True, name="agent").start()
+    _agent_q.put(alert)
 
-    def run():
-        try:
-            print(f"\n[agent] investigating incident {incident_id} "
-                  f"({alert['service_name']}/{alert['rule']}) ...")
-            final = investigate(incident_id)
-            print(f"\n===== INCIDENT REPORT (incident {incident_id}) =====\n"
-                  f"{final['report']}\n=====\n")
-        except Exception as e:
-            print(f"\n[agent] investigation of incident {incident_id} failed: {e}\n")
 
-    threading.Thread(target=run, daemon=True).start()
+# def handle_incident_opened(alert: dict):
+#     """Called by console.py when an incident opens. Runs in a background thread
+#     so the console doesn't freeze while the LLM works."""
+#     incident_id = alert["incident_id"]
+
+#     def run():
+#         try:
+#             print(f"\n[agent] investigating incident {incident_id} "
+#                   f"({alert['service_name']}/{alert['rule']}) ...")
+#             final = investigate(incident_id)
+#             print(f"\n===== INCIDENT REPORT (incident {incident_id}) =====\n"
+#                   f"{final['report']}\n=====\n")
+#         except Exception as e:
+#             print(f"\n[agent] investigation of incident {incident_id} failed: {e}\n")
+
+#     threading.Thread(target=run, daemon=True).start()
 
 
 if __name__ == "__main__":          # python agent.py -> test one incident by hand
